@@ -7,6 +7,7 @@ import liquibase.change.DatabaseChange
 import liquibase.change.core.*
 import liquibase.database.Database
 import liquibase.ext.base.AbstractZdChange
+import liquibase.ext.base.RewritableChange
 import liquibase.ext.change.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.create.trigger.syncUpdateTriggerChange
 import liquibase.ext.change.drop.trigger.DropSyncTriggerChange
@@ -19,18 +20,18 @@ import liquibase.structure.core.Column
     priority = ChangeMetaData.PRIORITY_DEFAULT + 1,
     appliesTo = ["column"]
 )
-class ZdRenameColumnChange : RenameColumnChange() {
+class ZdRenameColumnChange : RenameColumnChange(), RewritableChange {
     private val internalChange = InternalZdRenameColumnChange()
 
-    override fun supports(database: Database): Boolean = internalChange.supports(database)
-    override fun createInverses(): Array<Change>? = internalChange.createInverses()
+    override fun generateRollbackStatements(database: Database): Array<SqlStatement> =
+        internalChange.generateRollbackStatements(database).orElse(database) { super.generateRollbackStatements(it) }
+
     override fun generateStatements(database: Database): Array<SqlStatement> =
-        internalChange.generateStatements(database)
+        internalChange.generateStatements(database).orElse(database) { super.generateStatements(it) }
 
     internal inner class InternalZdRenameColumnChange :
         AbstractZdChange<RenameColumnChange>(
-            this,
-            { super.generateStatements(it) }
+            this@ZdRenameColumnChange
         ) {
         override fun generateExpandChanges(database: Database): Array<Change> = arrayOf(
             AddColumnChange().also {

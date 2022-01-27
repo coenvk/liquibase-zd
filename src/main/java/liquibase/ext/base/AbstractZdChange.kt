@@ -8,26 +8,22 @@ import liquibase.ext.util.ChangeUtils
 import liquibase.statement.SqlStatement
 
 abstract class AbstractZdChange<T : Change>(
-    private val originalChange: T,
-    private val generateOriginalStatements: (Database) -> Array<SqlStatement>
-) : ZdChange<T>, AbstractChange() {
+    private val originalChange: T
+) : AbstractChange(), ZdChange<T> {
     private var expandChanges: Array<Change> = emptyArray()
     private var contractChanges: Array<Change> = emptyArray()
 
     override fun getConfirmationMessage(): String = originalChange.confirmationMessage
 
-    override fun supports(database: Database): Boolean =
-        originalChange.supports(database) && database is PostgresDatabase
+    private fun Database.isRequiredPostgresVersion(): Boolean = this is PostgresDatabase
+    private fun supportsZd(database: Database): Boolean = database.isRequiredPostgresVersion()
 
-    final override fun generateStatements(database: Database): Array<SqlStatement> {
-        val mode = ChangeUtils.getMode(originalChange)
-        if (mode == ZdMode.EXPAND) {
-            return generateExpandStatements(database)
-        } else if (mode == ZdMode.CONTRACT) {
-            return generateContractStatements(database)
+    final override fun generateStatements(database: Database): Array<SqlStatement> =
+        if (!supportsZd(database)) emptyArray() else when (ChangeUtils.getMode(originalChange)) {
+            ZdMode.EXPAND -> generateExpandStatements(database)
+            ZdMode.CONTRACT -> generateContractStatements(database)
+            else -> emptyArray()
         }
-        return generateOriginalStatements(database)
-    }
 
     final override fun generateExpandStatements(database: Database): Array<SqlStatement> {
         if (expandChanges.isEmpty()) expandChanges = generateExpandChanges(database)
@@ -39,13 +35,14 @@ abstract class AbstractZdChange<T : Change>(
         return contractChanges.flatMap { it.generateStatements(database).asList() }.toTypedArray()
     }
 
-    public final override fun createInverses(): Array<Change>? {
-        val mode = ChangeUtils.getMode(originalChange)
-        if (mode == ZdMode.EXPAND) {
-            return createExpandInverses()
-        } else if (mode == ZdMode.OFF) {
-            return originalChange.invokeHiddenMethod("createInverses") as Array<Change>?
+    final override fun generateRollbackStatements(database: Database): Array<SqlStatement> {
+        return if (!supportsZd(database)) emptyArray() else super.generateRollbackStatements(database)
+    }
+
+    final override fun createInverses(): Array<Change>? {
+        return when (ChangeUtils.getMode(originalChange)) {
+            ZdMode.EXPAND -> createExpandInverses()
+            else -> null
         }
-        return null
     }
 }

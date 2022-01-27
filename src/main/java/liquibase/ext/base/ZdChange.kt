@@ -4,7 +4,7 @@ import liquibase.change.Change
 import liquibase.database.Database
 import liquibase.statement.SqlStatement
 
-internal interface ZdChange<out T : Change> : Change {
+internal interface ZdChange<out T : Change> {
     fun generateExpandChanges(database: Database): Array<Change>
     fun generateContractChanges(database: Database): Array<Change>
     fun createExpandInverses(): Array<Change>
