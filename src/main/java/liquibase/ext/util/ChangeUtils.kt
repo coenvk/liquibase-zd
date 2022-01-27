@@ -2,6 +2,7 @@ package liquibase.ext.util
 
 import liquibase.change.Change
 import liquibase.ext.base.ZdMode
+import java.lang.reflect.Method
 import java.util.*
 
 object ChangeUtils {
@@ -19,5 +20,17 @@ object ChangeUtils {
             .filter { m: ZdMode -> m.name.lowercase() == modeName.lowercase() }
             .findAny()
             .orElse(DEFAULT_MODE)
+    }
+
+    internal fun Any.invokeHiddenMethod(methodName: String, vararg args: Any): Any? {
+        val method: Method
+        try {
+            method = this::class.java.getDeclaredMethod(methodName)
+        } catch (e: NoSuchMethodException) {
+            return null
+        } finally {
+            true.also { method.isAccessible = it }
+        }
+        return method.invoke(this, args)
     }
 }

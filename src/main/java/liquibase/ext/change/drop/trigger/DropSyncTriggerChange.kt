@@ -5,8 +5,8 @@ import liquibase.database.Database
 import liquibase.database.core.PostgresDatabase
 
 class DropSyncTriggerChange(
-    var triggerName: String,
-    var tableName: String
+    triggerName: String,
+    tableName: String
 ) : RawSQLChange() {
     override fun supports(database: Database): Boolean = super.supports(database) && database is PostgresDatabase
 
