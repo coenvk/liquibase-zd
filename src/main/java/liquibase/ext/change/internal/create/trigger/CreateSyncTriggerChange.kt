@@ -1,14 +1,14 @@
-package liquibase.ext.change.create.trigger
+package liquibase.ext.change.internal.create.trigger
 
 import liquibase.change.Change
 import liquibase.change.core.CreateProcedureChange
 import liquibase.database.Database
 import liquibase.database.core.PostgresDatabase
-import liquibase.ext.change.create.procedure.CreateSyncInsertChange
-import liquibase.ext.change.create.procedure.CreateSyncUpdateChange
-import liquibase.ext.change.drop.trigger.DropSyncTriggerChange
+import liquibase.ext.change.internal.create.procedure.CreateSyncInsertChange
+import liquibase.ext.change.internal.create.procedure.CreateSyncUpdateChange
+import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
 
-class CreateSyncTriggerChange(
+internal class CreateSyncTriggerChange(
     catalogName: String?,
     schemaName: String?,
     var triggerName: String,

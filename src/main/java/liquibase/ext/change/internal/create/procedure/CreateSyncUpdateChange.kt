@@ -1,10 +1,10 @@
-package liquibase.ext.change.create.procedure
+package liquibase.ext.change.internal.create.procedure
 
 import liquibase.change.core.CreateProcedureChange
 import liquibase.database.Database
 import liquibase.database.core.PostgresDatabase
 
-class CreateSyncUpdateChange(
+internal class CreateSyncUpdateChange(
     catalogName: String?,
     schemaName: String?,
     procedureName: String,

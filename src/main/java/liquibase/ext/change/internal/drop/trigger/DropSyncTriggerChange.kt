@@ -1,10 +1,10 @@
-package liquibase.ext.change.drop.trigger
+package liquibase.ext.change.internal.drop.trigger
 
 import liquibase.change.core.RawSQLChange
 import liquibase.database.Database
 import liquibase.database.core.PostgresDatabase
 
-class DropSyncTriggerChange(
+internal class DropSyncTriggerChange(
     triggerName: String,
     tableName: String
 ) : RawSQLChange() {

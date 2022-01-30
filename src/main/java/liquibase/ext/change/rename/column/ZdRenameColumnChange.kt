@@ -7,9 +7,9 @@ import liquibase.change.DatabaseChange
 import liquibase.change.core.*
 import liquibase.database.Database
 import liquibase.ext.base.ZdChange
-import liquibase.ext.change.create.trigger.syncInsertTriggerChange
-import liquibase.ext.change.create.trigger.syncUpdateTriggerChange
-import liquibase.ext.change.drop.trigger.DropSyncTriggerChange
+import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
+import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
+import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
 import liquibase.statement.SqlStatement
 import liquibase.structure.core.Column
 
