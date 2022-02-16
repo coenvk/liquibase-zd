@@ -1,10 +1,8 @@
 package liquibase.ext.metadata
 
 import liquibase.change.Change
-import liquibase.change.core.AddForeignKeyConstraintChange
-import liquibase.change.core.AddPrimaryKeyChange
-import liquibase.change.core.AddUniqueConstraintChange
-import java.util.*
+import liquibase.change.core.*
+import liquibase.ext.change.constraint.AddForeignKeyNotValidChange
 
 abstract class ConstraintMetadata(
     var name: String = ""
@@ -15,6 +13,12 @@ abstract class ConstraintMetadata(
         tableName: String,
         oldColumnName: String,
         newColumnName: String
+    ): Change
+
+    abstract fun toRollback(
+        catalogName: String?,
+        schemaName: String?,
+        tableName: String
     ): Change
 }
 
@@ -37,7 +41,7 @@ class ForeignKeyConstraintMetadata(
         tableName: String,
         oldColumnName: String,
         newColumnName: String
-    ): Change = AddForeignKeyConstraintChange().also {
+    ): Change = AddForeignKeyNotValidChange().also {
         it.baseTableCatalogName = catalogName
         it.baseTableSchemaName = schemaName
         it.baseTableName = tableName
@@ -46,12 +50,23 @@ class ForeignKeyConstraintMetadata(
         it.referencedTableSchemaName = schemaName
         it.referencedTableName = referencedTableName
         it.referencedColumnNames = referencedColumnNames
-        it.constraintName = "fk_${UUID.randomUUID()}"
+        it.constraintName = "${tableName}_${it.baseColumnNames.replace(',', '_')}_fkey"
         it.deferrable = isDeferrable
         it.initiallyDeferred = isDeferred
         it.validate = false
         it.onDelete = onDelete.toString().replace('_', ' ')
         it.onUpdate = onUpdate.toString().replace('_', ' ')
+    }
+
+    override fun toRollback(
+        catalogName: String?,
+        schemaName: String?,
+        tableName: String
+    ): Change = DropForeignKeyConstraintChange().also {
+        it.baseTableCatalogName = catalogName
+        it.baseTableSchemaName = schemaName
+        it.baseTableName = tableName
+        it.constraintName = name
     }
 
     enum class Action {
@@ -94,6 +109,17 @@ class UniqueConstraintMetadata(
         it.initiallyDeferred = isDeferred
         it.validate = false
     }
+
+    override fun toRollback(
+        catalogName: String?,
+        schemaName: String?,
+        tableName: String
+    ): Change = DropUniqueConstraintChange().also {
+        it.catalogName = catalogName
+        it.schemaName = schemaName
+        it.tableName = tableName
+        it.constraintName = name
+    }
 }
 
 class PrimaryKeyConstraintMetadata(
@@ -113,5 +139,16 @@ class PrimaryKeyConstraintMetadata(
         it.tableName = tableName
         it.columnNames = columnNames.replace(oldColumnName, newColumnName)
         it.validate = false
+    }
+
+    override fun toRollback(
+        catalogName: String?,
+        schemaName: String?,
+        tableName: String
+    ): Change = DropPrimaryKeyChange().also {
+        it.catalogName = catalogName
+        it.schemaName = schemaName
+        it.tableName = tableName
+        it.constraintName = name
     }
 }

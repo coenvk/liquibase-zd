@@ -1,5 +1,6 @@
 package liquibase.ext.change.rename.column
 
+import liquibase.Scope
 import liquibase.change.AddColumnConfig
 import liquibase.change.Change
 import liquibase.change.ChangeMetaData
@@ -32,7 +33,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
 
     override fun generateExpandChanges(database: Database): Array<Change> {
         val columnMetadata = ColumnCopyTask().copy(
-            database, ColumnMetadata(newColumnName), mapOf(
+            database, ColumnMetadata(), mapOf(
                 "tableName" to tableName,
                 "columnName" to oldColumnName
             )
@@ -115,51 +116,83 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
         )
     }
 
-    override fun generateContractChanges(database: Database): Array<Change> = arrayOf(
-        DropSyncTriggerChange(
-            "t1",
-            tableName
-        ),
-        DropSyncTriggerChange(
-            "t2",
-            tableName
-        ),
-        DropSyncTriggerChange(
-            "t3",
-            tableName
-        ),
-        DropColumnChange().also {
-            it.catalogName = catalogName
-            it.schemaName = schemaName
-            it.tableName = tableName
-            it.columnName = oldColumnName
-        }
-    )
+    override fun generateContractChanges(database: Database): Array<Change> {
+        val columnMetadata = ColumnCopyTask().copy(
+            database, ColumnMetadata(), mapOf(
+                "tableName" to tableName,
+                "columnName" to oldColumnName
+            )
+        )
+        val constraintChanges = columnMetadata.constraints.map {
+            it.toRollback(
+                catalogName,
+                schemaName,
+                tableName
+            )
+        }.toTypedArray()
+        return arrayOf(
+            DropSyncTriggerChange(
+                "t1",
+                tableName
+            ),
+            DropSyncTriggerChange(
+                "t2",
+                tableName
+            ),
+            DropSyncTriggerChange(
+                "t3",
+                tableName
+            ),
+            *constraintChanges,
+            DropColumnChange().also {
+                it.catalogName = catalogName
+                it.schemaName = schemaName
+                it.tableName = tableName
+                it.columnName = oldColumnName
+            }
+        )
+    }
 
-    override fun createExpandInverses(): Array<Change> = arrayOf(
-        DropSyncTriggerChange(
-            "t3",
-            tableName
-        ),
-        DropNotNullConstraintChange().also {
-            it.catalogName = catalogName
-            it.schemaName = schemaName
-            it.tableName = tableName
-            it.columnName = newColumnName
-        },
-        DropSyncTriggerChange(
-            "t2",
-            tableName
-        ),
-        DropSyncTriggerChange(
-            "t1",
-            tableName
-        ),
-        DropColumnChange().also {
-            it.catalogName = catalogName
-            it.schemaName = schemaName
-            it.tableName = tableName
-            it.columnName = newColumnName
-        }
-    )
+    override fun createExpandInverses(): Array<Change> {
+        val columnMetadata = ColumnCopyTask().copy(
+            Scope.getCurrentScope().database, ColumnMetadata(), mapOf(
+                "tableName" to tableName,
+                "columnName" to newColumnName
+            )
+        )
+        val constraintChanges = columnMetadata.constraints.map {
+            it.toRollback(
+                catalogName,
+                schemaName,
+                tableName
+            )
+        }.toTypedArray()
+        return arrayOf(
+            DropSyncTriggerChange(
+                "t3",
+                tableName
+            ),
+            DropNotNullConstraintChange().also {
+                it.catalogName = catalogName
+                it.schemaName = schemaName
+                it.tableName = tableName
+                it.columnName = newColumnName
+            },
+            DropSyncTriggerChange(
+                "t2",
+                tableName
+            ),
+            DropSyncTriggerChange(
+                "t1",
+                tableName
+            ),
+            *constraintChanges,
+            DropColumnChange().also {
+                it.catalogName = catalogName
+                it.schemaName = schemaName
+                it.tableName = tableName
+                it.columnName = newColumnName
+            }
+        )
+    }
 }

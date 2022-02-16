@@ -3,6 +3,10 @@ package liquibase.ext.util
 import java.sql.ResultSet
 
 object KotlinExtensions {
+    inline fun <reified T, R : T> Array<T>.mapIf(condition: Boolean, f: (element: T) -> R): Array<T> = if (condition) {
+        map(f).toTypedArray()
+    } else this
+
     inline fun Boolean.throwIfFalse(
         throwable: () -> Throwable
     ) {
