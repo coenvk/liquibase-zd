@@ -15,7 +15,7 @@ import liquibase.database.Database
 import liquibase.database.DatabaseFactory
 import liquibase.database.core.PostgresDatabase
 import liquibase.ext.base.ZdChange
-import liquibase.ext.base.ZdMode
+import liquibase.ext.base.ZdStrategy
 import liquibase.ext.change.rename.column.ZdRenameColumnChange
 
 object TestConstants {
@@ -45,19 +45,19 @@ object TestConstants {
             }
         }
 
-    private fun Change.createChangeSet(zdMode: ZdMode = ZdMode.OFF): ChangeSet = run {
+    private fun Change.createChangeSet(zdStrategy: ZdStrategy = ZdStrategy.OFF): ChangeSet = run {
         val changeLog = mockk<DatabaseChangeLog>(relaxed = true)
         spyk(ChangeSet(changeLog)).apply {
             every { changes } returns listOf(this@createChangeSet)
             val params = ChangeLogParameters()
-            params.set(ZdChange.PROPERTY_KEY_ZD_MODE, zdMode.toString())
+            params.set(ZdChange.PROPERTY_KEY_ZD_STRATEGY, zdStrategy.toString())
             every { changeLogParameters } returns params
         }
     }
 
-    private fun Pair<Change, Change>.addContext(zdMode: ZdMode = ZdMode.OFF) =
-        first.apply { changeSet = createChangeSet(zdMode) } to
-                second.apply { changeSet = createChangeSet(zdMode) }
+    private fun Pair<Change, Change>.addContext(zdStrategy: ZdStrategy = ZdStrategy.OFF) =
+        first.apply { changeSet = createChangeSet(zdStrategy) } to
+                second.apply { changeSet = createChangeSet(zdStrategy) }
 
     fun Database.runInScope(scopedRunner: () -> Unit) {
         val scopeObjects: MutableMap<String, Any> = HashMap()
@@ -68,8 +68,8 @@ object TestConstants {
     private val zdChangeArb = Arb.choice(renameColumnPairArb)
 
     val zdOffChangeArb = zdChangeArb.map { it.addContext() }
-    val zdExpandChangeArb = zdChangeArb.map { it.addContext(ZdMode.EXPAND) }
-    val zdContractChangeArb = zdChangeArb.map { it.addContext(ZdMode.CONTRACT) }
+    val zdExpandChangeArb = zdChangeArb.map { it.addContext(ZdStrategy.EXPAND) }
+    val zdContractChangeArb = zdChangeArb.map { it.addContext(ZdStrategy.CONTRACT) }
 
     val supportedDatabases = Arb.of(DatabaseFactory.getInstance().implementedDatabases
         .filterIsInstance<PostgresDatabase>())

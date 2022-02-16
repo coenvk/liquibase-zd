@@ -10,6 +10,7 @@ import liquibase.database.core.PostgresDatabase
 import liquibase.database.jvm.JdbcConnection
 import liquibase.exception.CustomChangeException
 import liquibase.exception.ValidationErrors
+import liquibase.ext.util.KotlinExtensions.getAll
 import liquibase.logging.Logger
 import liquibase.resource.ResourceAccessor
 import liquibase.structure.core.Column
@@ -158,12 +159,22 @@ class BatchMigrationChange : CustomTaskChange, CustomTaskRollback {
             "UPDATE $fullName SET $updateColumnsString WHERE %1\$s IN (SELECT %1\$s FROM $fullName WHERE $whereClauseString %2\$s);"
         query = when (db) {
             is OracleDatabase -> query.format("rowId", "FETCH FIRST $chunkSize ROWS ONLY")
-            is PostgresDatabase -> query.format("ctid", "LIMIT $chunkSize")
+            is PostgresDatabase -> {
+                val rs = conn.metaData.getBestRowIdentifier(
+                    catalogName,
+                    schemaName,
+                    tableName,
+                    DatabaseMetaData.bestRowSession,
+                    false
+                )
+                val columnNames = rs.getAll<String>(2).distinct().joinToString()
+                query.format(columnNames, "LIMIT $chunkSize")
+            }
             else -> throw UnsupportedOperationException()
         }
 
         try {
-            if (!hasImmutableRowIds(conn)) {
+            if (db is OracleDatabase && !hasImmutableRowIds(conn)) {
                 LOG.severe("rowIds are not immutable, migration strategy can not be applied")
                 throw CustomChangeException("Database has no immutable rowIds")
             }

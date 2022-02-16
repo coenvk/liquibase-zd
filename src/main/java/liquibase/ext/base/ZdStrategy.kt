@@ -1,6 +1,6 @@
 package liquibase.ext.base
 
-enum class ZdMode(val key: String) {
+enum class ZdStrategy(val key: String) {
     OFF("off"),
     EXPAND("expand"),
     CONTRACT("contract");

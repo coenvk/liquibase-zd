@@ -16,32 +16,32 @@ interface ZdChange : Change {
         database: Database,
         generateOriginal: (Database) -> Array<SqlStatement>
     ): Array<SqlStatement> =
-        if (!supportsZd(database)) generateOriginal(database) else when (getMode()) {
-            ZdMode.EXPAND -> generateExpandStatements(database)
-            ZdMode.CONTRACT -> generateContractStatements(database)
+        if (!supportsZd(database)) generateOriginal(database) else when (getStrategy()) {
+            ZdStrategy.EXPAND -> generateExpandStatements(database)
+            ZdStrategy.CONTRACT -> generateContractStatements(database)
             else -> generateOriginal(database)
         }
 
     fun createZdInverses(createOriginalInverses: () -> Array<Change>?): Array<Change>? =
         if (!supportsZd(Scope.getCurrentScope().database)) {
             createOriginalInverses()
-        } else when (getMode()) {
-            ZdMode.EXPAND -> createExpandInverses()
-            ZdMode.CONTRACT -> null
+        } else when (getStrategy()) {
+            ZdStrategy.EXPAND -> createExpandInverses()
+            ZdStrategy.CONTRACT -> null
             else -> createOriginalInverses()
         }
 
-    fun getMode(): ZdMode {
-        val changeSet = changeSet ?: return DEFAULT_MODE
-        val modeName = (changeSet.changeLogParameters.getValue(
-            PROPERTY_KEY_ZD_MODE,
+    fun getStrategy(): ZdStrategy {
+        val changeSet = changeSet ?: return DEFAULT_STRATEGY
+        val strategy = (changeSet.changeLogParameters.getValue(
+            PROPERTY_KEY_ZD_STRATEGY,
             changeSet.changeLog
-        ) ?: DEFAULT_MODE).toString()
+        ) ?: DEFAULT_STRATEGY).toString()
         return Arrays
-            .stream(ZdMode.values())
-            .filter { m: ZdMode -> m.name.lowercase() == modeName.lowercase() }
+            .stream(ZdStrategy.values())
+            .filter { m: ZdStrategy -> m.name.lowercase() == strategy.lowercase() }
             .findAny()
-            .orElse(DEFAULT_MODE)
+            .orElse(DEFAULT_STRATEGY)
     }
 
     private fun generateExpandStatements(database: Database): Array<SqlStatement> {
@@ -55,7 +55,7 @@ interface ZdChange : Change {
     private fun supportsZd(database: Database): Boolean = database is PostgresDatabase
 
     companion object {
-        const val PROPERTY_KEY_ZD_MODE = "zd-mode"
-        private val DEFAULT_MODE = ZdMode.OFF
+        const val PROPERTY_KEY_ZD_STRATEGY = "zd-strategy"
+        private val DEFAULT_STRATEGY = ZdStrategy.OFF
     }
 }

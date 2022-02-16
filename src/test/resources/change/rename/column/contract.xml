@@ -4,7 +4,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
 
-    <property name="zd-mode" value="contract" global="false"/>
+    <property name="zd-strategy" value="contract" global="false"/>
 
     <changeSet id="rename.column.contract" author="Coen">
         <renameColumn tableName="customer" oldColumnName="name" newColumnName="fullname" columnDataType="varchar(50)"/>
