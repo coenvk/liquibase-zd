@@ -44,6 +44,9 @@ interface ZdChange : Change {
             .orElse(DEFAULT_STRATEGY)
     }
 
+    fun isZdEnabled(database: Database): Boolean = supportsZd(database) && getStrategy() != ZdStrategy.OFF
+    fun isRollbackZdEnabled(database: Database): Boolean = supportsZd(database) && getStrategy() == ZdStrategy.EXPAND
+
     private fun generateExpandStatements(database: Database): Array<SqlStatement> {
         return generateExpandChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
     }
@@ -52,7 +55,7 @@ interface ZdChange : Change {
         return generateContractChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
     }
 
-    private fun supportsZd(database: Database): Boolean = database is PostgresDatabase
+    private fun supportsZd(database: Database?): Boolean = database is PostgresDatabase
 
     companion object {
         const val PROPERTY_KEY_ZD_STRATEGY = "zd-strategy"

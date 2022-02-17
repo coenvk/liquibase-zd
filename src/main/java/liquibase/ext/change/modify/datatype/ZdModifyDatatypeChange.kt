@@ -1,4 +1,4 @@
-package liquibase.ext.change.rename.column
+package liquibase.ext.change.modify.datatype
 
 import liquibase.Scope
 import liquibase.change.AddColumnConfig
@@ -17,12 +17,15 @@ import liquibase.statement.SqlStatement
 import liquibase.structure.core.Column
 
 @DatabaseChange(
-    name = "renameColumn",
-    description = "Renames an existing column.",
+    name = "modifyDataType",
+    description = "Modifies the data type of an existing column.",
     priority = ChangeMetaData.PRIORITY_DEFAULT + 1,
     appliesTo = ["column"]
 )
-class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
+class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
+    private var newColumnName: String? = null
+        get() = field ?: ""
+
     override fun generateStatements(database: Database): Array<SqlStatement> =
         generateZdStatements(database) { super.generateStatements(it) }
 
@@ -36,7 +39,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
         val columnMetadata = ColumnCopyTask().copy(
             database, ColumnMetadata(), mapOf(
                 "tableName" to tableName,
-                "columnName" to oldColumnName
+                "columnName" to columnName
             )
         )
         val constraintChanges = columnMetadata.constraints.map {
@@ -44,8 +47,8 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 catalogName,
                 schemaName,
                 tableName,
-                oldColumnName,
-                newColumnName
+                columnName,
+                newColumnName!!
             )
         }.toTypedArray()
         return arrayOf(
@@ -55,7 +58,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 it.tableName = tableName
                 val newColumn = Column.fromName(newColumnName).setNullable(true)
                 val newColumnConfig = AddColumnConfig(newColumn)
-                newColumnConfig.type = columnMetadata.type
+                newColumnConfig.type = newDataType
                 it.columns = listOf(newColumnConfig)
             },
             *constraintChanges,
@@ -64,16 +67,16 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 schemaName,
                 tableName,
                 "t1",
-                oldColumnName,
-                newColumnName,
+                columnName,
+                newColumnName!!,
             ),
             *syncInsertTriggerChange(
                 catalogName,
                 schemaName,
                 tableName,
                 "t2",
-                oldColumnName,
-                newColumnName,
+                columnName,
+                newColumnName!!,
             ),
 //            CustomChangeWrapper().setClass(BatchMigrationChange::class.java.name).also {
 //                it.setParam("catalogName", catalogName)
@@ -84,7 +87,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
 //            },
             RawSQLChange().also {
                 it.sql =
-                    """UPDATE $tableName SET $newColumnName = $oldColumnName WHERE $newColumnName IS NULL AND $oldColumnName IS NOT NULL;"""
+                    """UPDATE $tableName SET $newColumnName = $columnName WHERE $newColumnName IS NULL AND $columnName IS NOT NULL;"""
             },
             if (columnMetadata.isNullable) EmptyChange()
             else {
@@ -111,8 +114,8 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 schemaName,
                 tableName,
                 "t3",
-                newColumnName,
-                oldColumnName,
+                newColumnName!!,
+                columnName,
             )
         )
     }
@@ -121,7 +124,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
         val columnMetadata = ColumnCopyTask().copy(
             database, ColumnMetadata(), mapOf(
                 "tableName" to tableName,
-                "columnName" to oldColumnName
+                "columnName" to columnName
             )
         )
         val constraintChanges = columnMetadata.constraints.map {
@@ -149,7 +152,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 it.catalogName = catalogName
                 it.schemaName = schemaName
                 it.tableName = tableName
-                it.columnName = oldColumnName
+                it.columnName = columnName
             }
         )
     }
@@ -158,7 +161,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
         val columnMetadata = ColumnCopyTask().copy(
             Scope.getCurrentScope().database, ColumnMetadata(), mapOf(
                 "tableName" to tableName,
-                "columnName" to newColumnName
+                "columnName" to newColumnName!!
             )
         )
         val constraintChanges = columnMetadata.constraints.map {

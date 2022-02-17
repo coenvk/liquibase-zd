@@ -6,11 +6,11 @@ import liquibase.sql.Sql
 import liquibase.sql.UnparsedSql
 import liquibase.sqlgenerator.SqlGeneratorChain
 
-class AddForeignKeyNotValidGenerator : RewriteSqlGenerator<AddForeignKeyNotValidStatement>() {
+class AddCheckConstraintNotValidGenerator : RewriteSqlGenerator<AddCheckConstraintNotValidStatement>() {
     override fun generateSql(
-        statement: AddForeignKeyNotValidStatement,
+        statement: AddCheckConstraintNotValidStatement,
         database: Database,
-        sqlGeneratorChain: SqlGeneratorChain<AddForeignKeyNotValidStatement>
+        sqlGeneratorChain: SqlGeneratorChain<AddCheckConstraintNotValidStatement>
     ): Array<Sql> = generateOriginal(statement, database).rewriteSql(database) { sql ->
         UnparsedSql("${sql.toSql()} NOT VALID")
     }

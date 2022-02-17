@@ -7,6 +7,11 @@ object KotlinExtensions {
         map(f).toTypedArray()
     } else this
 
+    inline fun <reified T, R : T> Array<T>.mapFirst(f: (element: T) -> R): Array<T> = mapIndexed { i, e ->
+        if (i == 0) f(e)
+        else e
+    }.toTypedArray()
+
     inline fun Boolean.throwIfFalse(
         throwable: () -> Throwable
     ) {
