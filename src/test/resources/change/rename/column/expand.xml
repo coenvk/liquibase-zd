@@ -7,6 +7,6 @@
     <property name="zd-strategy" value="expand" global="false"/>
 
     <changeSet id="rename.column.expand" author="Coen">
-        <renameColumn tableName="customer" oldColumnName="name" newColumnName="fullname" columnDataType="varchar(50)"/>
+        <renameColumn tableName="customer" oldColumnName="name" newColumnName="fullname"/>
     </changeSet>
 </databaseChangeLog>

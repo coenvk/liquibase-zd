@@ -17,6 +17,7 @@ import liquibase.database.core.PostgresDatabase
 import liquibase.ext.base.ZdChange
 import liquibase.ext.base.ZdStrategy
 import liquibase.ext.change.rename.column.ZdRenameColumnChange
+import java.sql.DatabaseMetaData
 
 object TestConstants {
     private val dataTypeArb = Arb.of("bigint", "boolean", "int", "float", "decimal", "double", "char", "clob")
@@ -45,7 +46,7 @@ object TestConstants {
             }
         }
 
-    private fun Change.createChangeSet(zdStrategy: ZdStrategy = ZdStrategy.OFF): ChangeSet = run {
+    private fun Change.createChangeSet(zdStrategy: ZdStrategy = ZdStrategy.DISABLED): ChangeSet = run {
         val changeLog = mockk<DatabaseChangeLog>(relaxed = true)
         spyk(ChangeSet(changeLog)).apply {
             every { changes } returns listOf(this@createChangeSet)
@@ -55,7 +56,7 @@ object TestConstants {
         }
     }
 
-    private fun Pair<Change, Change>.addContext(zdStrategy: ZdStrategy = ZdStrategy.OFF) =
+    private fun Pair<Change, Change>.addContext(zdStrategy: ZdStrategy = ZdStrategy.DISABLED) =
         first.apply { changeSet = createChangeSet(zdStrategy) } to
                 second.apply { changeSet = createChangeSet(zdStrategy) }
 

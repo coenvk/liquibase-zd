@@ -78,7 +78,7 @@ abstract class ZdChangeIntegrationTest(
         checkAll(TestConstants.unsupportedDatabases) { db ->
             val originalChangeLog = xmlParser.parse(originalChangeLogXml, ChangeLogParameters(db), accessor)
             val originalChange = originalChangeLog.changeSets.first().changes.first()
-            if (originalChange.supports(db)) {
+            if (originalChange.supports(db) && !originalChange.validate(db).hasErrors()) {
                 val expandChangeLog = xmlParser.parse(expandChangeLogXml, ChangeLogParameters(db), accessor)
                 val contractChangeLog = xmlParser.parse(contractChangeLogXml, ChangeLogParameters(db), accessor)
                 val expandSql = genSqlString(expandChangeLog.changeSets.first().changes.first(), db)

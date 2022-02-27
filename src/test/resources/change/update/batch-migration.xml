@@ -5,7 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
 
     <changeSet id="update.batchMigration" author="Coen">
-        <customChange class="liquibase.ext.change.update.BatchMigrationChange">
+        <customChange class="liquibase.ext.change.update.BulkColumnCopyChange">
             <param name="tableName" value="customer" />
             <param name="fromColumns" value="phone" />
             <param name="toColumns" value="phoneNumber" />

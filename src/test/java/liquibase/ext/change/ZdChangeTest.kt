@@ -87,7 +87,7 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.zdExpandChangeArb
             ) { db, (zdChange, originalChange) ->
                 db.runInScope {
-                    if (zdChange.supportsRollback(db)) {
+                    if (!zdChange.generateRollbackStatementsVolatile(db) && zdChange.supportsRollback(db)) {
                         val expandRollback = zdChange.toRollbackSql(db)
                         val originalRollback = originalChange.toRollbackSql(db)
 
@@ -126,7 +126,7 @@ class ZdChangeTest : ShouldSpec({
             ) { db, (zdChange, originalChange) ->
                 if (originalChange.supports(db)) {
                     db.runInScope {
-                        if (zdChange.supportsRollback(db)) {
+                        if (!zdChange.generateRollbackStatementsVolatile(db) && zdChange.supportsRollback(db)) {
                             val expandRollback = zdChange.toRollbackSql(db)
                             val originalRollback = originalChange.toRollbackSql(db)
 

@@ -10,6 +10,7 @@ import io.mockk.spyk
 import io.mockk.verify
 import liquibase.database.jvm.JdbcConnection
 import liquibase.exception.CustomChangeException
+import liquibase.ext.util.KotlinExtensions.getAll
 import liquibase.ext.util.TestConstants
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -53,52 +54,21 @@ class BatchMigrationChangeTest : ShouldSpec({
                 verify(exactly = 0) { conn.commit() }
             }
         }
-        should("stop when rowIds are mutable") {
-            checkAll(
-                TestConstants.supportedDatabases,
-                gen.rowIdLifeTimeInvalidGenerator,
-                gen.validMigrationGenerator
-            ) { db, lt, c ->
-                val conn = mockk<JdbcConnection>()
-                val md = mockk<DatabaseMetaData>()
-                val spyDb = spyk(db)
-                every { spyDb.connection } returns conn
-                every { conn.isClosed } returns false
-                every { md.rowIdLifetime } returns lt
-                every { conn.metaData } returns md
-
-                assertThrows(CustomChangeException::class.java) {
-                    c.execute(spyDb)
-                }
-            }
-        }
-        should("continue when rowIds are immutable") {
-            checkAll(TestConstants.supportedDatabases, gen.validMigrationGenerator) { db, c ->
-                val conn = mockk<JdbcConnection>(relaxed = true)
-                val md = mockk<DatabaseMetaData>()
-                val spyDb = spyk(db)
-                every { spyDb.connection } returns conn
-                every { conn.isClosed } returns false
-                every { md.rowIdLifetime } returns RowIdLifetime.ROWID_VALID_FOREVER
-                every { conn.metaData } returns md
-
-                assertDoesNotThrow {
-                    c.execute(spyDb)
-                }
-            }
-        }
         should("close statements as many times as commits when execution goes fine") {
             checkAll(TestConstants.supportedDatabases, gen.validMigrationGenerator) { db, c ->
                 val conn = mockk<JdbcConnection>(relaxed = true)
                 val md = mockk<DatabaseMetaData>()
+                val rs = mockk<ResultSet>()
                 val stmt = mockk<PreparedStatement>()
                 val spyDb = spyk(db)
                 val expectedUpdates = listOf(c.chunkSize!!, c.chunkSize!!, 0L)
 
                 every { spyDb.connection } returns conn
                 every { conn.isClosed } returns false
-                every { md.rowIdLifetime } returns RowIdLifetime.ROWID_VALID_FOREVER
                 every { conn.metaData } returns md
+                every { md.getBestRowIdentifier(any(), any(), any(), any(), any()) } returns rs
+                every { rs.getObject(2) } returns "id"
+                every { rs.next() } returns true andThen false
                 every { stmt.close() } returns Unit
                 every { stmt.executeLargeUpdate() } returnsMany expectedUpdates
                 every { conn.prepareStatement(any(), Statement.RETURN_GENERATED_KEYS) } returns stmt
@@ -113,14 +83,17 @@ class BatchMigrationChangeTest : ShouldSpec({
             checkAll(TestConstants.supportedDatabases, gen.validMigrationGenerator) { db, c ->
                 val conn = mockk<JdbcConnection>(relaxed = true)
                 val md = mockk<DatabaseMetaData>()
+                val rs = mockk<ResultSet>()
                 val stmt = mockk<PreparedStatement>()
                 val spyDb = spyk(db)
                 val expectedUpdates = listOf(c.chunkSize!!, c.chunkSize!!, 0L)
 
                 every { spyDb.connection } returns conn
                 every { conn.isClosed } returns false
-                every { md.rowIdLifetime } returns RowIdLifetime.ROWID_VALID_FOREVER
                 every { conn.metaData } returns md
+                every { md.getBestRowIdentifier(any(), any(), any(), any(), any()) } returns rs
+                every { rs.getObject(2) } returns "id"
+                every { rs.next() } returns true andThen false
                 every { stmt.close() } returns Unit
                 every { stmt.executeLargeUpdate() } returnsMany expectedUpdates
                 every { conn.commit() } returns Unit andThen Unit andThenThrows SQLException("Anything")
@@ -141,7 +114,7 @@ class BatchMigrationChangeTest : ShouldSpec({
                 every { spyDb.connection } returns null
 
                 assertThrows(CustomChangeException::class.java) {
-                    BatchMigrationChange().execute(spyDb)
+                    BulkColumnCopyChange().execute(spyDb)
                 }
             }
         }
@@ -153,7 +126,7 @@ class BatchMigrationChangeTest : ShouldSpec({
                 every { spyDb.connection } returns null
 
                 assertThrows(CustomChangeException::class.java) {
-                    BatchMigrationChange().execute(spyDb)
+                    BulkColumnCopyChange().execute(spyDb)
                 }
             }
         }
@@ -165,6 +138,7 @@ class BatchMigrationChangeTest : ShouldSpec({
             ) { db, allRowCount, migration ->
                 val conn = mockk<JdbcConnection>()
                 val md = mockk<DatabaseMetaData>()
+                val rs = mockk<ResultSet>()
                 val stmt = mockk<PreparedStatement>()
                 val spyDb = spyk(db)
 
@@ -178,8 +152,10 @@ class BatchMigrationChangeTest : ShouldSpec({
 
                 every { spyDb.connection } returns conn
                 every { conn.isClosed } returns false
-                every { md.rowIdLifetime } returns RowIdLifetime.ROWID_VALID_FOREVER
                 every { conn.metaData } returns md
+                every { md.getBestRowIdentifier(any(), any(), any(), any(), any()) } returns rs
+                every { rs.getObject(2) } returns "id"
+                every { rs.next() } returns true andThen false
                 every { stmt.executeLargeUpdate() } returnsMany updateResults
                 every { conn.prepareStatement(any(), Statement.RETURN_GENERATED_KEYS) } returns stmt
                 every { conn.commit() } returns Unit
@@ -196,6 +172,7 @@ class BatchMigrationChangeTest : ShouldSpec({
             checkAll(TestConstants.supportedDatabases, gen.validMigrationGenerator) { db, migration ->
                 val conn = mockk<JdbcConnection>()
                 val md = mockk<DatabaseMetaData>()
+                val rs = mockk<ResultSet>()
                 val stmt = mockk<PreparedStatement>()
                 val spyDb = spyk(db)
 
@@ -207,8 +184,10 @@ class BatchMigrationChangeTest : ShouldSpec({
 
                 every { spyDb.connection } returns conn
                 every { conn.isClosed } returns false
-                every { md.rowIdLifetime } returns RowIdLifetime.ROWID_VALID_FOREVER
                 every { conn.metaData } returns md
+                every { md.getBestRowIdentifier(any(), any(), any(), any(), any()) } returns rs
+                every { rs.getObject(2) } returns "id"
+                every { rs.next() } returns true andThen false
                 every { stmt.executeLargeUpdate() } returnsMany listOf(n, n, n, tail, 0L)
                 every { conn.prepareStatement(capture(slot), Statement.RETURN_GENERATED_KEYS) } returns stmt
                 every { conn.commit() } returns Unit

@@ -7,7 +7,6 @@ import io.mockk.mockk
 import io.mockk.spyk
 import liquibase.change.custom.CustomChangeWrapper
 import liquibase.changelog.ChangeLogParameters
-import liquibase.database.core.OracleDatabase
 import liquibase.database.jvm.JdbcConnection
 import liquibase.ext.util.TestConstants
 import liquibase.parser.ChangeLogParser
@@ -16,7 +15,7 @@ import liquibase.resource.ClassLoaderResourceAccessor
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.sql.DatabaseMetaData
 import java.sql.PreparedStatement
-import java.sql.RowIdLifetime
+import java.sql.ResultSet
 
 class BatchMigrationIntegrationTest : ShouldSpec({
     val accessor = ClassLoaderResourceAccessor()
@@ -26,7 +25,8 @@ class BatchMigrationIntegrationTest : ShouldSpec({
 
     should("xml result in expected class") {
         checkAll(TestConstants.supportedDatabases) { db ->
-            val xml = xmlParser.parse("change/update/batch-migration.xml", ChangeLogParameters(OracleDatabase()), accessor)
+            val xml =
+                xmlParser.parse("change/update/batch-migration.xml", ChangeLogParameters(db), accessor)
             assertEquals(1, xml.changeSets.size)
             val changes = xml.changeSets.first().changes
             val customChangeWrapper = changes[0] as CustomChangeWrapper
@@ -35,16 +35,19 @@ class BatchMigrationIntegrationTest : ShouldSpec({
             assertEquals("phone", customChangeWrapper.getParamValue("fromColumns"))
             assertEquals("phoneNumber", customChangeWrapper.getParamValue("toColumns"))
             assertEquals("1000", customChangeWrapper.getParamValue("chunkSize"))
-            assertEquals(BatchMigrationChange::class.java, customChangeWrapper.customChange.javaClass)
+            assertEquals(BulkColumnCopyChange::class.java, customChangeWrapper.customChange.javaClass)
 
-            val m = customChangeWrapper.customChange as BatchMigrationChange
+            val m = customChangeWrapper.customChange as BulkColumnCopyChange
 
             val conn = mockk<JdbcConnection>(relaxed = true)
             val stmt = mockk<PreparedStatement>(relaxed = true)
             val md = mockk<DatabaseMetaData>()
+            val rs = mockk<ResultSet>()
             val spyDb = spyk(db)
-            every { md.rowIdLifetime } returns RowIdLifetime.ROWID_VALID_FOREVER
             every { conn.metaData } returns md
+            every { md.getBestRowIdentifier(any(), any(), any(), any(), any()) } returns rs
+            every { rs.getObject(2) } returns "id"
+            every { rs.next() } returns true andThen false
             every { stmt.executeLargeUpdate() } returns 0L // implies done
             every { conn.prepareStatement(any(), any<Int>()) } returns stmt
             every { spyDb.connection } returns conn

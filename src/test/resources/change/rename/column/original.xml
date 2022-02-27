@@ -5,6 +5,6 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
 
     <changeSet id="rename.column.original" author="Coen">
-        <renameColumn tableName="customer" oldColumnName="name" newColumnName="fullname" columnDataType="varchar(50)"/>
+        <renameColumn tableName="customer" oldColumnName="name" newColumnName="fullname"/>
     </changeSet>
 </databaseChangeLog>
