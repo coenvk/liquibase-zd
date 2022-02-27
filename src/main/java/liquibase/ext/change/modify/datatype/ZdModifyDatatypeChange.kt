@@ -8,11 +8,13 @@ import liquibase.change.DatabaseChange
 import liquibase.change.core.*
 import liquibase.database.Database
 import liquibase.ext.base.ZdChange
+import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
-import liquibase.ext.metadata.ColumnCopyTask
-import liquibase.ext.metadata.ColumnMetadata
+import liquibase.ext.change.update.BulkColumnCopyChange
+import liquibase.ext.metadata.column.ColumnCopyTask
+import liquibase.ext.metadata.column.ColumnMetadata
 import liquibase.statement.SqlStatement
 import liquibase.structure.core.Column
 
@@ -78,16 +80,12 @@ class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
                 columnName,
                 newColumnName!!,
             ),
-//            CustomChangeWrapper().setClass(BatchMigrationChange::class.java.name).also {
-//                it.setParam("catalogName", catalogName)
-//                it.setParam("schemaName", schemaName)
-//                it.setParam("tableName", tableName)
-//                it.setParam("fromColumns", oldColumnName)
-//                it.setParam("toColumns", newColumnName)
-//            },
-            RawSQLChange().also {
-                it.sql =
-                    """UPDATE $tableName SET $newColumnName = $columnName WHERE $newColumnName IS NULL AND $columnName IS NOT NULL;"""
+            CustomChangeDecorator().setClass(BulkColumnCopyChange::class.java.name).also {
+                it.setParam("catalogName", catalogName)
+                it.setParam("schemaName", schemaName)
+                it.setParam("tableName", tableName)
+                it.setParam("fromColumns", columnName)
+                it.setParam("toColumns", newColumnName)
             },
             if (columnMetadata.isNullable) EmptyChange()
             else {

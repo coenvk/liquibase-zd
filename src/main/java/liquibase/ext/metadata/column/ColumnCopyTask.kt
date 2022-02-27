@@ -1,11 +1,13 @@
-package liquibase.ext.metadata
+package liquibase.ext.metadata.column
 
 import liquibase.database.jvm.JdbcConnection
+import liquibase.ext.metadata.AbstractMetadataCopyTask
+import liquibase.ext.util.KotlinExtensions.forFirst
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Statement
 
-internal class ColumnCopyTask : AbstractMetadataCopyTask<ColumnMetadata>() {
+class ColumnCopyTask : AbstractMetadataCopyTask<ColumnMetadata>() {
     override fun prepareStatement(
         connection: JdbcConnection,
         args: Map<String, Any>
@@ -63,8 +65,8 @@ internal class ColumnCopyTask : AbstractMetadataCopyTask<ColumnMetadata>() {
     }
 
     override fun copy(resultSet: ResultSet, targetObject: ColumnMetadata) {
-        resultSet.use { rs ->
-            if (rs.next()) targetObject.apply {
+        resultSet.forFirst { rs ->
+            targetObject.apply {
                 type = rs.getString(1)
                 isNullable = !rs.getBoolean(2)
                 defaultValue = rs.getString(3)
@@ -74,33 +76,39 @@ internal class ColumnCopyTask : AbstractMetadataCopyTask<ColumnMetadata>() {
                         // TODO: check constraints
                     }
                     "f" -> {
-                        constraints.add(ForeignKeyConstraintMetadata(
-                            name = rs.getString(5),
-                            isDeferrable = rs.getBoolean(6),
-                            isDeferred = rs.getBoolean(7),
-                            validate = rs.getBoolean(8),
-                            onUpdate = ForeignKeyConstraintMetadata.Action.from(rs.getString(9)),
-                            onDelete = ForeignKeyConstraintMetadata.Action.from(rs.getString(10)),
-                            baseColumnNames = rs.getString(11),
-                            referencedTableName = rs.getString(12),
-                            referencedColumnNames = rs.getString(13),
-                        ))
+                        constraints.add(
+                            ForeignKeyConstraintMetadata(
+                                name = rs.getString(5),
+                                isDeferrable = rs.getBoolean(6),
+                                isDeferred = rs.getBoolean(7),
+                                validate = rs.getBoolean(8),
+                                onUpdate = ForeignKeyConstraintMetadata.Action.from(rs.getString(9)),
+                                onDelete = ForeignKeyConstraintMetadata.Action.from(rs.getString(10)),
+                                baseColumnNames = rs.getString(11),
+                                referencedTableName = rs.getString(12),
+                                referencedColumnNames = rs.getString(13),
+                            )
+                        )
                     }
                     "p" -> {
-                        constraints.add(PrimaryKeyConstraintMetadata(
-                            name = rs.getString(5),
-                            validate = rs.getBoolean(8),
-                            columnNames = rs.getString(11)
-                        ))
+                        constraints.add(
+                            PrimaryKeyConstraintMetadata(
+                                name = rs.getString(5),
+                                validate = rs.getBoolean(8),
+                                columnNames = rs.getString(11)
+                            )
+                        )
                     }
                     "u" -> {
-                        constraints.add(UniqueConstraintMetadata(
-                            name = rs.getString(5),
-                            isDeferrable = rs.getBoolean(6),
-                            isDeferred = rs.getBoolean(7),
-                            validate = rs.getBoolean(8),
-                            columnNames = rs.getString(11)
-                        ))
+                        constraints.add(
+                            UniqueConstraintMetadata(
+                                name = rs.getString(5),
+                                isDeferrable = rs.getBoolean(6),
+                                isDeferred = rs.getBoolean(7),
+                                validate = rs.getBoolean(8),
+                                columnNames = rs.getString(11)
+                            )
+                        )
                     }
                     "t" -> {
                         // TODO: constraint trigger

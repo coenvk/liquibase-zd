@@ -16,7 +16,7 @@ import liquibase.resource.ResourceAccessor
 import liquibase.structure.core.Column
 import java.sql.*
 
-class BatchMigrationChange : CustomTaskChange, CustomTaskRollback {
+class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
     var catalogName: String? = null
     var schemaName: String? = null
     var tableName: String? = null
@@ -230,6 +230,6 @@ class BatchMigrationChange : CustomTaskChange, CustomTaskRollback {
     companion object {
         const val DEFAULT_CHUNK_SIZE = 1000L
         const val DEFAULT_SLEEP_TIME = 0L
-        val LOG: Logger = Scope.getCurrentScope().getLog(BatchMigrationChange::class.java)
+        val LOG: Logger = Scope.getCurrentScope().getLog(BulkColumnCopyChange::class.java)
     }
 }

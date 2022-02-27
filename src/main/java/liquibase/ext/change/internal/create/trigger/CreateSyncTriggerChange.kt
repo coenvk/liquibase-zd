@@ -4,6 +4,7 @@ import liquibase.change.Change
 import liquibase.change.core.CreateProcedureChange
 import liquibase.database.Database
 import liquibase.database.core.PostgresDatabase
+import liquibase.exception.UnexpectedLiquibaseException
 import liquibase.ext.change.internal.create.procedure.CreateSyncInsertChange
 import liquibase.ext.change.internal.create.procedure.CreateSyncUpdateChange
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
@@ -12,10 +13,10 @@ internal class CreateSyncTriggerChange(
     catalogName: String?,
     schemaName: String?,
     var triggerName: String,
-    procedureName: String,
     var tableName: String,
     fromColumnName: String,
     toColumnName: String,
+    procedureName: String? = null,
     var onUpdate: Boolean = false,
     var onInsert: Boolean = false
 ) : CreateProcedureChange() {
@@ -23,23 +24,33 @@ internal class CreateSyncTriggerChange(
     init {
         this.catalogName = catalogName
         this.schemaName = schemaName
-        this.procedureName = procedureName
+        this.procedureName =
+            procedureName
+                ?: when {
+                    onUpdate -> CreateSyncUpdateChange.DEFAULT_PROCEDURE_NAME
+                    onInsert -> CreateSyncInsertChange.DEFAULT_PROCEDURE_NAME
+                    else -> throw UnexpectedLiquibaseException(
+                        "No valid procedure name for the trigger."
+                    )
+                }
         this.dbms = "postgresql"
         this.procedureText = """CREATE TRIGGER $triggerName
-            BEFORE ${if (onUpdate) "UPDATE" else ""} ${if (onUpdate && onInsert) "OR INSERT" else if (onInsert) "INSERT" else ""} ON $tableName
+            BEFORE ${if (onUpdate) "UPDATE" else ""}${if (onUpdate && onInsert) " OR INSERT" else if (onInsert) "INSERT" else ""} ON $tableName
             FOR EACH ROW
-            ${if (onUpdate) "WHEN (OLD.$fromColumnName IS DISTINCT FROM NEW.$fromColumnName)" else if (onInsert) "WHEN (NEW.$fromColumnName IS DISTINCT FROM NEW.$toColumnName)" else ""}
-            EXECUTE PROCEDURE $procedureName();
+            WHEN ${if (onUpdate) "(OLD.$fromColumnName IS DISTINCT FROM NEW.$fromColumnName)" else if (onInsert) "(NEW.$fromColumnName IS DISTINCT FROM NEW.$toColumnName)" else ""}
+            EXECUTE PROCEDURE ${this.procedureName}(${fromColumnName}, ${toColumnName});
             """
     }
 
     override fun supports(database: Database): Boolean = super.supports(database) && database is PostgresDatabase
 
     override fun createInverses(): Array<Change> {
-        return arrayOf(DropSyncTriggerChange(
-            triggerName,
-            tableName
-        ))
+        return arrayOf(
+            DropSyncTriggerChange(
+                triggerName,
+                tableName
+            )
+        )
     }
 }
 
@@ -51,20 +62,15 @@ fun syncUpdateTriggerChange(
     fromColumnName: String,
     toColumnName: String,
 ): Array<Change> {
-    val procedureName = "${triggerName}_${tableName}_on_update"
     return arrayOf(
         CreateSyncUpdateChange(
             catalogName,
-            schemaName,
-            procedureName,
-            fromColumnName,
-            toColumnName
+            schemaName
         ),
         CreateSyncTriggerChange(
             catalogName,
             schemaName,
             triggerName,
-            procedureName,
             tableName,
             fromColumnName,
             toColumnName,
@@ -81,20 +87,17 @@ fun syncInsertTriggerChange(
     columnName1: String,
     columnName2: String,
 ): Array<Change> {
-    val procedureName = "${triggerName}_${tableName}_on_insert"
+    val procedureName = "sync_on_insert"
     return arrayOf(
         CreateSyncInsertChange(
             catalogName,
             schemaName,
-            procedureName,
-            columnName1,
-            columnName2
+            procedureName
         ),
         CreateSyncTriggerChange(
             catalogName,
             schemaName,
             triggerName,
-            procedureName,
             tableName,
             columnName1,
             columnName2,

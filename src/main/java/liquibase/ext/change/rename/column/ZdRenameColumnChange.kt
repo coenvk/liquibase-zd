@@ -8,11 +8,14 @@ import liquibase.change.DatabaseChange
 import liquibase.change.core.*
 import liquibase.database.Database
 import liquibase.ext.base.ZdChange
+import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
-import liquibase.ext.metadata.ColumnCopyTask
-import liquibase.ext.metadata.ColumnMetadata
+import liquibase.ext.change.update.BulkColumnCopyChange
+import liquibase.ext.metadata.column.ColumnCopyTask
+import liquibase.ext.metadata.column.ColumnMetadata
+import liquibase.logging.Logger
 import liquibase.statement.SqlStatement
 import liquibase.structure.core.Column
 
@@ -75,16 +78,12 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 oldColumnName,
                 newColumnName,
             ),
-//            CustomChangeWrapper().setClass(BatchMigrationChange::class.java.name).also {
-//                it.setParam("catalogName", catalogName)
-//                it.setParam("schemaName", schemaName)
-//                it.setParam("tableName", tableName)
-//                it.setParam("fromColumns", oldColumnName)
-//                it.setParam("toColumns", newColumnName)
-//            },
-            RawSQLChange().also {
-                it.sql =
-                    """UPDATE $tableName SET $newColumnName = $oldColumnName WHERE $newColumnName IS NULL AND $oldColumnName IS NOT NULL;"""
+            CustomChangeDecorator().setClass(BulkColumnCopyChange::class.java.name).also {
+                it.setParam("catalogName", catalogName)
+                it.setParam("schemaName", schemaName)
+                it.setParam("tableName", tableName)
+                it.setParam("fromColumns", oldColumnName)
+                it.setParam("toColumns", newColumnName)
             },
             if (columnMetadata.isNullable) EmptyChange()
             else {
@@ -195,5 +194,9 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 it.columnName = newColumnName
             }
         )
+    }
+
+    companion object {
+        private val LOG: Logger = Scope.getCurrentScope().getLog(ZdRenameColumnChange::class.java)
     }
 }

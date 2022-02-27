@@ -12,13 +12,20 @@ interface ZdChange : Change {
     fun generateContractChanges(database: Database): Array<Change>
     fun createExpandInverses(): Array<Change>
 
+    fun generateChanges(database: Database): Array<Change> =
+        if (!supportsZd(database)) emptyArray() else when (getStrategy()) {
+            ZdStrategy.EXPAND -> generateExpandChanges(database)
+            ZdStrategy.CONTRACT -> generateContractChanges(database)
+            else -> emptyArray()
+        }
+
     fun generateZdStatements(
         database: Database,
         generateOriginal: (Database) -> Array<SqlStatement>
     ): Array<SqlStatement> =
         if (!supportsZd(database)) generateOriginal(database) else when (getStrategy()) {
-            ZdStrategy.EXPAND -> generateExpandStatements(database)
-            ZdStrategy.CONTRACT -> generateContractStatements(database)
+            ZdStrategy.EXPAND -> emptyArray()
+            ZdStrategy.CONTRACT -> emptyArray()
             else -> generateOriginal(database)
         }
 
@@ -44,8 +51,11 @@ interface ZdChange : Change {
             .orElse(DEFAULT_STRATEGY)
     }
 
-    fun isZdEnabled(database: Database): Boolean = supportsZd(database) && getStrategy() != ZdStrategy.OFF
-    fun isRollbackZdEnabled(database: Database): Boolean = supportsZd(database) && getStrategy() == ZdStrategy.EXPAND
+    fun isZdEnabled(database: Database): Boolean = supportsZd(database) && getStrategy() != ZdStrategy.DISABLED
+    fun isRollbackZdEnabled(database: Database): Boolean = isExpand(database)
+    fun isExpand(database: Database): Boolean = supportsZd(database) && getStrategy() == ZdStrategy.EXPAND
+    fun isContract(database: Database): Boolean = supportsZd(database) && getStrategy() == ZdStrategy.CONTRACT
+    fun isDisabled(database: Database): Boolean = !supportsZd(database) || getStrategy() == ZdStrategy.DISABLED
 
     private fun generateExpandStatements(database: Database): Array<SqlStatement> {
         return generateExpandChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
@@ -59,6 +69,6 @@ interface ZdChange : Change {
 
     companion object {
         const val PROPERTY_KEY_ZD_STRATEGY = "zd-strategy"
-        private val DEFAULT_STRATEGY = ZdStrategy.OFF
+        private val DEFAULT_STRATEGY = ZdStrategy.DISABLED
     }
 }

@@ -10,7 +10,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-internal abstract class AbstractMetadataCopyTask<T> : MetadataCopyTask<T> {
+abstract class AbstractMetadataCopyTask<T : Metadata> : MetadataCopyTask<T> {
     override fun setUp() = Unit
 
     protected abstract fun prepareStatement(
@@ -57,6 +57,6 @@ internal abstract class AbstractMetadataCopyTask<T> : MetadataCopyTask<T> {
     }
 
     companion object {
-        val LOG: Logger = Scope.getCurrentScope().getLog(AbstractMetadataCopyTask::class.java)
+        private val LOG: Logger = Scope.getCurrentScope().getLog(AbstractMetadataCopyTask::class.java)
     }
 }

@@ -1,4 +1,4 @@
-package liquibase.ext.metadata
+package liquibase.ext.metadata.column
 
 import liquibase.change.Change
 import liquibase.change.core.*

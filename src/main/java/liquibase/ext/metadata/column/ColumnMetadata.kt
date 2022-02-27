@@ -1,9 +1,11 @@
-package liquibase.ext.metadata
+package liquibase.ext.metadata.column
+
+import liquibase.ext.metadata.Metadata
 
 data class ColumnMetadata(
-    var type: String? = null,
+    var type: String = "",
     var defaultValue: String? = null,
     var isNullable: Boolean = true
-) {
+) : Metadata {
     val constraints: MutableList<ConstraintMetadata> = mutableListOf()
 }
