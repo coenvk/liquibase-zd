@@ -9,8 +9,7 @@ import liquibase.change.custom.CustomTaskRollback
 import liquibase.database.Database
 import liquibase.exception.CustomChangeException
 import liquibase.exception.UnexpectedLiquibaseException
-import liquibase.executor.ExecutorService
-import liquibase.ext.executor.CustomJdbcExecutor
+import liquibase.logging.Logger
 import liquibase.statement.SqlStatement
 
 @DatabaseChange(
@@ -26,34 +25,32 @@ For a sample custom change class, see liquibase.change.custom.ExampleCustomSqlCh
 )
 class CustomChangeDecorator : CustomChangeWrapper() {
     override fun generateStatements(database: Database): Array<SqlStatement> {
-        return try {
+        try {
             confirmationMessage // calls private method configureCustomChange
             if (customChange is CustomTaskChange) {
-                val executor =
-                    Scope.getCurrentScope().getSingleton(ExecutorService::class.java).getExecutor("jdbc", database)
-                if (executor is CustomJdbcExecutor) {
-                    arrayOf(CustomTaskStatement(customChange as CustomTaskChange))
-                }
+                LOG.info("Found CustomTaskChange")
+                return arrayOf(CustomTaskStatement(this))
             }
-            super.generateStatements(database)
+            return super.generateStatements(database)
         } catch (e: CustomChangeException) {
             throw UnexpectedLiquibaseException(e)
         }
     }
 
     override fun generateRollbackStatements(database: Database): Array<SqlStatement> {
-        return try {
+        try {
             confirmationMessage // calls private method configureCustomChange
             if (customChange is CustomTaskRollback) {
-                val executor =
-                    Scope.getCurrentScope().getSingleton(ExecutorService::class.java).getExecutor("jdbc", database)
-                if (executor is CustomJdbcExecutor) {
-                    arrayOf(CustomTaskRollbackStatement(customChange as CustomTaskRollback))
-                }
+                LOG.info("Found CustomTaskRollback")
+                return arrayOf(CustomTaskRollbackStatement(this))
             }
-            super.generateRollbackStatements(database)
+            return super.generateRollbackStatements(database)
         } catch (e: CustomChangeException) {
             throw UnexpectedLiquibaseException(e)
         }
+    }
+
+    companion object {
+        private val LOG: Logger = Scope.getCurrentScope().getLog(CustomChangeDecorator::class.java)
     }
 }

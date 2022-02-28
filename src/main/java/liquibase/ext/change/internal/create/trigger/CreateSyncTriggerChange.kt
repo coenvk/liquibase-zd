@@ -30,15 +30,15 @@ internal class CreateSyncTriggerChange(
                     onUpdate -> CreateSyncUpdateChange.DEFAULT_PROCEDURE_NAME
                     onInsert -> CreateSyncInsertChange.DEFAULT_PROCEDURE_NAME
                     else -> throw UnexpectedLiquibaseException(
-                        "No valid procedure name for the trigger."
+                        "Trigger should either be fired on update or on insert."
                     )
                 }
         this.dbms = "postgresql"
-        this.procedureText = """CREATE TRIGGER $triggerName
+        this.procedureText = """CREATE OR REPLACE TRIGGER $triggerName
             BEFORE ${if (onUpdate) "UPDATE" else ""}${if (onUpdate && onInsert) " OR INSERT" else if (onInsert) "INSERT" else ""} ON $tableName
             FOR EACH ROW
             WHEN ${if (onUpdate) "(OLD.$fromColumnName IS DISTINCT FROM NEW.$fromColumnName)" else if (onInsert) "(NEW.$fromColumnName IS DISTINCT FROM NEW.$toColumnName)" else ""}
-            EXECUTE PROCEDURE ${this.procedureName}(${fromColumnName}, ${toColumnName});
+            EXECUTE PROCEDURE ${this.procedureName}();
             """
     }
 
@@ -62,10 +62,14 @@ fun syncUpdateTriggerChange(
     fromColumnName: String,
     toColumnName: String,
 ): Array<Change> {
+    val procedureName = "${triggerName}_${CreateSyncUpdateChange.DEFAULT_PROCEDURE_NAME}_$tableName"
     return arrayOf(
         CreateSyncUpdateChange(
             catalogName,
-            schemaName
+            schemaName,
+            fromColumnName,
+            toColumnName,
+            procedureName = procedureName
         ),
         CreateSyncTriggerChange(
             catalogName,
@@ -74,6 +78,7 @@ fun syncUpdateTriggerChange(
             tableName,
             fromColumnName,
             toColumnName,
+            procedureName = procedureName,
             onUpdate = true
         )
     )
@@ -87,12 +92,14 @@ fun syncInsertTriggerChange(
     columnName1: String,
     columnName2: String,
 ): Array<Change> {
-    val procedureName = "sync_on_insert"
+    val procedureName = "${triggerName}_${CreateSyncInsertChange.DEFAULT_PROCEDURE_NAME}_$tableName"
     return arrayOf(
         CreateSyncInsertChange(
             catalogName,
             schemaName,
-            procedureName
+            columnName1,
+            columnName2,
+            procedureName = procedureName
         ),
         CreateSyncTriggerChange(
             catalogName,
@@ -101,6 +108,7 @@ fun syncInsertTriggerChange(
             tableName,
             columnName1,
             columnName2,
+            procedureName = procedureName,
             onInsert = true
         )
     )

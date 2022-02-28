@@ -24,6 +24,8 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
     var toColumns: String? = null
     var chunkSize: Long? = DEFAULT_CHUNK_SIZE
 
+    var rowId: String? = null
+
     var sleepTime: Long? = DEFAULT_SLEEP_TIME
         @DatabaseChangeProperty(requiredForDatabase = [])
         get() {
@@ -160,15 +162,17 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         query = when (db) {
             is OracleDatabase -> query.format("rowId", "FETCH FIRST $chunkSize ROWS ONLY")
             is PostgresDatabase -> {
-                val rs = conn.metaData.getBestRowIdentifier(
-                    catalogName,
-                    schemaName,
-                    tableName,
-                    DatabaseMetaData.bestRowSession,
-                    false
-                )
-                val columnNames = rs.getAll<String>(2).distinct().joinToString()
-                query.format(columnNames, "LIMIT $chunkSize")
+                if (rowId == null) {
+                    val rs = conn.metaData.getBestRowIdentifier(
+                        catalogName,
+                        schemaName,
+                        tableName,
+                        DatabaseMetaData.bestRowSession,
+                        false
+                    )
+                    rowId = rs.getAll<String>(2).distinct().joinToString()
+                }
+                query.format(rowId, "LIMIT $chunkSize")
             }
             else -> throw UnsupportedOperationException()
         }
@@ -230,6 +234,6 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
     companion object {
         const val DEFAULT_CHUNK_SIZE = 1000L
         const val DEFAULT_SLEEP_TIME = 0L
-        val LOG: Logger = Scope.getCurrentScope().getLog(BulkColumnCopyChange::class.java)
+        private val LOG: Logger = Scope.getCurrentScope().getLog(BulkColumnCopyChange::class.java)
     }
 }

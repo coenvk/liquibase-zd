@@ -7,7 +7,9 @@ import liquibase.change.ChangeMetaData
 import liquibase.change.DatabaseChange
 import liquibase.change.core.*
 import liquibase.database.Database
+import liquibase.exception.UnexpectedLiquibaseException
 import liquibase.ext.base.ZdChange
+import liquibase.ext.change.constraint.AddForeignKeyNotValidChange
 import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
@@ -15,6 +17,7 @@ import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
 import liquibase.ext.change.update.BulkColumnCopyChange
 import liquibase.ext.metadata.column.ColumnCopyTask
 import liquibase.ext.metadata.column.ColumnMetadata
+import liquibase.ext.metadata.column.PrimaryKeyConstraintMetadata
 import liquibase.logging.Logger
 import liquibase.statement.SqlStatement
 import liquibase.structure.core.Column
@@ -42,6 +45,9 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 "columnName" to oldColumnName
             )
         )
+        if (columnMetadata.constraints.filterIsInstance<PrimaryKeyConstraintMetadata>().any()) {
+            throw UnexpectedLiquibaseException("Current implementation does not support renaming a primary key column.")
+        }
         val constraintChanges = columnMetadata.constraints.map {
             it.toChange(
                 catalogName,
@@ -61,7 +67,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 newColumnConfig.type = columnMetadata.type
                 it.columns = listOf(newColumnConfig)
             },
-            *constraintChanges,
+            *constraintChanges.filterNot { it is AddForeignKeyNotValidChange }.toTypedArray(),
             *syncUpdateTriggerChange(
                 catalogName,
                 schemaName,
@@ -84,7 +90,9 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 it.setParam("tableName", tableName)
                 it.setParam("fromColumns", oldColumnName)
                 it.setParam("toColumns", newColumnName)
+                it.setParam("rowId", columnMetadata.primaryKeyOrNull())
             },
+            *constraintChanges.filterIsInstance<AddForeignKeyNotValidChange>().toTypedArray(),
             if (columnMetadata.isNullable) EmptyChange()
             else {
                 AddNotNullConstraintChange().also {

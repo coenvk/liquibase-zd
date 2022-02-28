@@ -8,4 +8,9 @@ data class ColumnMetadata(
     var isNullable: Boolean = true
 ) : Metadata {
     val constraints: MutableList<ConstraintMetadata> = mutableListOf()
+
+    fun primaryKeyOrNull(): String? {
+        val pkConstraint = constraints.filterIsInstance<PrimaryKeyConstraintMetadata>().firstOrNull() ?: return null
+        return pkConstraint.columnNames
+    }
 }

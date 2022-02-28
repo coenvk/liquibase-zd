@@ -7,7 +7,9 @@ import liquibase.change.ChangeMetaData
 import liquibase.change.DatabaseChange
 import liquibase.change.core.*
 import liquibase.database.Database
+import liquibase.exception.ValidationErrors
 import liquibase.ext.base.ZdChange
+import liquibase.ext.change.constraint.AddForeignKeyNotValidChange
 import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
@@ -25,8 +27,13 @@ import liquibase.structure.core.Column
     appliesTo = ["column"]
 )
 class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
-    private var newColumnName: String? = null
-        get() = field ?: ""
+    var newColumnName: String? = null
+
+    override fun validate(database: Database?): ValidationErrors {
+        val validationErrors = super.validate(database)
+        validationErrors.checkRequiredField("newColumnName", newColumnName)
+        return validationErrors
+    }
 
     override fun generateStatements(database: Database): Array<SqlStatement> =
         generateZdStatements(database) { super.generateStatements(it) }
@@ -63,7 +70,7 @@ class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
                 newColumnConfig.type = newDataType
                 it.columns = listOf(newColumnConfig)
             },
-            *constraintChanges,
+            *constraintChanges.filterNot { it is AddForeignKeyNotValidChange }.toTypedArray(),
             *syncUpdateTriggerChange(
                 catalogName,
                 schemaName,
@@ -86,7 +93,9 @@ class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
                 it.setParam("tableName", tableName)
                 it.setParam("fromColumns", columnName)
                 it.setParam("toColumns", newColumnName)
+                it.setParam("rowId", columnMetadata.primaryKeyOrNull())
             },
+            *constraintChanges.filterIsInstance<AddForeignKeyNotValidChange>().toTypedArray(),
             if (columnMetadata.isNullable) EmptyChange()
             else {
                 AddNotNullConstraintChange().also {

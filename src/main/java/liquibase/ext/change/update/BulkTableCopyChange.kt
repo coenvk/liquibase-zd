@@ -12,10 +12,7 @@ import liquibase.exception.ValidationErrors
 import liquibase.ext.util.KotlinExtensions.getAll
 import liquibase.logging.Logger
 import liquibase.resource.ResourceAccessor
-import java.sql.DatabaseMetaData
-import java.sql.PreparedStatement
-import java.sql.SQLException
-import java.sql.Statement
+import java.sql.*
 
 class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
     var fromCatalogName: String? = null
@@ -25,6 +22,8 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
     var toCatalogName: String? = null
     var toSchemaName: String? = null
     var toTableName: String? = null
+
+    var rowId: String? = null
 
     var chunkSize: Long? = DEFAULT_CHUNK_SIZE
 
@@ -106,18 +105,20 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
 
         val conn = db.connection as JdbcConnection
         // Fetch only the rows where not all values are synced yet
-        val rs = conn.metaData.getBestRowIdentifier(
-            fromCatalogName,
-            fromSchemaName,
-            fromTableName,
-            DatabaseMetaData.bestRowSession,
-            false
-        )
-        val columnNames = rs.getAll<String>(2).distinct().joinToString()
+        if (rowId == null) {
+            val rs = conn.metaData.getBestRowIdentifier(
+                fromCatalogName,
+                fromSchemaName,
+                fromTableName,
+                DatabaseMetaData.bestRowSession,
+                false
+            )
+            rowId = rs.getAll<String>(2).distinct().joinToString()
+        }
         val query = """
             INSERT INTO $toFullName
             SELECT * FROM $fromFullName
-            WHERE $columnNames NOT IN (SELECT $columnNames FROM $toFullName)
+            WHERE $rowId NOT IN (SELECT $rowId FROM $toFullName)
             LIMIT $chunkSize;
         """.trimIndent()
 
@@ -162,6 +163,6 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
     companion object {
         const val DEFAULT_CHUNK_SIZE = 1000L
         const val DEFAULT_SLEEP_TIME = 0L
-        val LOG: Logger = Scope.getCurrentScope().getLog(BulkTableCopyChange::class.java)
+        private val LOG: Logger = Scope.getCurrentScope().getLog(BulkTableCopyChange::class.java)
     }
 }

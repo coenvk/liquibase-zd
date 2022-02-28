@@ -12,20 +12,13 @@ interface ZdChange : Change {
     fun generateContractChanges(database: Database): Array<Change>
     fun createExpandInverses(): Array<Change>
 
-    fun generateChanges(database: Database): Array<Change> =
-        if (!supportsZd(database)) emptyArray() else when (getStrategy()) {
-            ZdStrategy.EXPAND -> generateExpandChanges(database)
-            ZdStrategy.CONTRACT -> generateContractChanges(database)
-            else -> emptyArray()
-        }
-
     fun generateZdStatements(
         database: Database,
         generateOriginal: (Database) -> Array<SqlStatement>
     ): Array<SqlStatement> =
         if (!supportsZd(database)) generateOriginal(database) else when (getStrategy()) {
-            ZdStrategy.EXPAND -> emptyArray()
-            ZdStrategy.CONTRACT -> emptyArray()
+            ZdStrategy.EXPAND -> generateExpandStatements(database)
+            ZdStrategy.CONTRACT -> generateContractStatements(database)
             else -> generateOriginal(database)
         }
 
@@ -57,13 +50,11 @@ interface ZdChange : Change {
     fun isContract(database: Database): Boolean = supportsZd(database) && getStrategy() == ZdStrategy.CONTRACT
     fun isDisabled(database: Database): Boolean = !supportsZd(database) || getStrategy() == ZdStrategy.DISABLED
 
-    private fun generateExpandStatements(database: Database): Array<SqlStatement> {
-        return generateExpandChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
-    }
+    private fun generateExpandStatements(database: Database): Array<SqlStatement> =
+        generateExpandChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
 
-    private fun generateContractStatements(database: Database): Array<SqlStatement> {
-        return generateContractChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
-    }
+    private fun generateContractStatements(database: Database): Array<SqlStatement> =
+        generateContractChanges(database).flatMap { it.generateStatements(database).asList() }.toTypedArray()
 
     private fun supportsZd(database: Database?): Boolean = database is PostgresDatabase
 

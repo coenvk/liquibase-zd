@@ -26,6 +26,7 @@ class ZdRenameViewChange : RenameViewChange(), ZdChange {
         createZdInverses { super.createInverses() }
 
     override fun generateStatementsVolatile(database: Database): Boolean = isExpand(database)
+    override fun generateRollbackStatementsVolatile(database: Database): Boolean = false
 
     override fun generateExpandChanges(database: Database): Array<Change> {
         val viewMetadata = ViewCopyTask().copy(
