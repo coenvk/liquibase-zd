@@ -28,7 +28,7 @@ class CustomChangeDecorator : CustomChangeWrapper() {
         try {
             confirmationMessage // calls private method configureCustomChange
             if (customChange is CustomTaskChange) {
-                LOG.info("Found CustomTaskChange")
+                LOG.info("CustomTaskChange will be executed in sql generator.")
                 return arrayOf(CustomTaskStatement(this))
             }
             return super.generateStatements(database)
@@ -41,7 +41,7 @@ class CustomChangeDecorator : CustomChangeWrapper() {
         try {
             confirmationMessage // calls private method configureCustomChange
             if (customChange is CustomTaskRollback) {
-                LOG.info("Found CustomTaskRollback")
+                LOG.info("CustomTaskRollback will be executed in sql generator.")
                 return arrayOf(CustomTaskRollbackStatement(this))
             }
             return super.generateRollbackStatements(database)

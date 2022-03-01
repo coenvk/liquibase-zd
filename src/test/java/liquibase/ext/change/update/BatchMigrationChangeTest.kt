@@ -10,10 +10,8 @@ import io.mockk.spyk
 import io.mockk.verify
 import liquibase.database.jvm.JdbcConnection
 import liquibase.exception.CustomChangeException
-import liquibase.ext.util.KotlinExtensions.getAll
 import liquibase.ext.util.TestConstants
 import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.assertDoesNotThrow
 import java.sql.*
 import liquibase.ext.change.update.BatchMigrationGenerator as gen
 

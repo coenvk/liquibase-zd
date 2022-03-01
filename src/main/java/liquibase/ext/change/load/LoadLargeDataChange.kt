@@ -114,9 +114,7 @@ class LoadLargeDataChange : AbstractTableChange() {
             stmt.delimiter = separator
             return arrayOf(stmt)
         } catch (ule: UnexpectedLiquibaseException) {
-            return if (changeSet != null && changeSet.failOnError != null && !changeSet
-                    .failOnError
-            ) {
+            return if (changeSet != null && changeSet.failOnError != null && !changeSet.failOnError) {
                 LOG.info(
                     "Change set " + changeSet.toString(false) +
                             " failed, but failOnError was false.  Error: " + ule.message

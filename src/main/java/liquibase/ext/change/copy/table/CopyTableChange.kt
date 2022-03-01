@@ -1,6 +1,7 @@
 package liquibase.ext.change.copy.table
 
 import liquibase.change.*
+import liquibase.change.core.DropTableChange
 import liquibase.database.Database
 import liquibase.statement.SqlStatement
 
@@ -23,4 +24,12 @@ class CopyTableChange : AbstractTableChange() {
     override fun generateStatements(database: Database): Array<SqlStatement> {
         return arrayOf(CopyTableStatement(catalogName, schemaName, tableName, copyTableName!!))
     }
+
+    override fun createInverses(): Array<Change> = arrayOf(
+        DropTableChange().also {
+            it.catalogName = catalogName
+            it.schemaName = schemaName
+            it.tableName = tableName
+        }
+    )
 }

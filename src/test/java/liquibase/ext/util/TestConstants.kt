@@ -7,7 +7,10 @@ import io.mockk.mockk
 import io.mockk.spyk
 import liquibase.Scope
 import liquibase.change.Change
+import liquibase.change.core.ModifyDataTypeChange
 import liquibase.change.core.RenameColumnChange
+import liquibase.change.core.RenameTableChange
+import liquibase.change.core.RenameViewChange
 import liquibase.changelog.ChangeLogParameters
 import liquibase.changelog.ChangeSet
 import liquibase.changelog.DatabaseChangeLog
@@ -16,8 +19,11 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.core.PostgresDatabase
 import liquibase.ext.base.ZdChange
 import liquibase.ext.base.ZdStrategy
+import liquibase.ext.change.modify.datatype.ZdModifyDatatypeChange
 import liquibase.ext.change.rename.column.ZdRenameColumnChange
-import java.sql.DatabaseMetaData
+import liquibase.ext.change.rename.table.ZdRenameTableUsingCopyChange
+import liquibase.ext.change.rename.table.ZdRenameTableUsingViewChange
+import liquibase.ext.change.rename.view.ZdRenameViewChange
 
 object TestConstants {
     private val dataTypeArb = Arb.of("bigint", "boolean", "int", "float", "decimal", "double", "char", "clob")
@@ -28,21 +34,91 @@ object TestConstants {
             alphaNumArb.orNull(),
             alphaNumArb,
             alphaNumArb,
-            alphaNumArb,
-            dataTypeArb
-        ) { schema, table, oldColumn, newColumn, dataType ->
+            alphaNumArb
+        ) { schema, table, oldColumn, newColumn ->
             ZdRenameColumnChange().apply {
                 schemaName = schema
                 tableName = table
                 oldColumnName = oldColumn
                 newColumnName = newColumn
-                columnDataType = dataType
             } to RenameColumnChange().apply {
                 schemaName = schema
                 tableName = table
                 oldColumnName = oldColumn
                 newColumnName = newColumn
-                columnDataType = dataType
+            }
+        }
+
+    private val renameTableUsingCopyPairArb =
+        Arb.bind(
+            alphaNumArb.orNull(),
+            alphaNumArb,
+            alphaNumArb,
+        ) { schema, oldTable, newTable ->
+            ZdRenameTableUsingCopyChange().apply {
+                schemaName = schema
+                oldTableName = oldTable
+                newTableName = newTable
+            } to RenameTableChange().apply {
+                schemaName = schema
+                oldTableName = oldTable
+                newTableName = newTable
+            }
+        }
+
+    private val renameTableUsingViewPairArb =
+        Arb.bind(
+            alphaNumArb.orNull(),
+            alphaNumArb,
+            alphaNumArb,
+        ) { schema, oldTable, newTable ->
+            ZdRenameTableUsingViewChange().apply {
+                schemaName = schema
+                oldTableName = oldTable
+                newTableName = newTable
+            } to RenameTableChange().apply {
+                schemaName = schema
+                oldTableName = oldTable
+                newTableName = newTable
+            }
+        }
+
+    private val modifyDataTypePairArb =
+        Arb.bind(
+            alphaNumArb.orNull(),
+            alphaNumArb,
+            alphaNumArb,
+            alphaNumArb,
+            dataTypeArb
+        ) { schema, table, column, newColumn, newType ->
+            ZdModifyDatatypeChange().apply {
+                schemaName = schema
+                tableName = table
+                columnName = column
+                newColumnName = newColumn
+                newDataType = newType
+            } to ModifyDataTypeChange().apply {
+                schemaName = schema
+                tableName = table
+                columnName = column
+                newDataType = newType
+            }
+        }
+
+    private val renameViewPairArb =
+        Arb.bind(
+            alphaNumArb.orNull(),
+            alphaNumArb,
+            alphaNumArb
+        ) { schema, oldView, newView ->
+            ZdRenameViewChange().apply {
+                schemaName = schema
+                oldViewName = oldView
+                newViewName = newView
+            } to RenameViewChange().apply {
+                schemaName = schema
+                oldViewName = oldView
+                newViewName = newView
             }
         }
 
@@ -66,14 +142,22 @@ object TestConstants {
         Scope.child(scopeObjects, scopedRunner)
     }
 
-    private val zdChangeArb = Arb.choice(renameColumnPairArb)
+    private val zdChangeArb = Arb.choice(
+        renameColumnPairArb,
+        renameTableUsingCopyPairArb,
+        renameTableUsingViewPairArb,
+        modifyDataTypePairArb,
+        renameViewPairArb
+    )
 
-    val zdOffChangeArb = zdChangeArb.map { it.addContext() }
+    val zdDisabledChangeArb = zdChangeArb.map { it.addContext() }
     val zdExpandChangeArb = zdChangeArb.map { it.addContext(ZdStrategy.EXPAND) }
     val zdContractChangeArb = zdChangeArb.map { it.addContext(ZdStrategy.CONTRACT) }
 
-    val supportedDatabases = Arb.of(DatabaseFactory.getInstance().implementedDatabases
-        .filterIsInstance<PostgresDatabase>())
+    val supportedDatabases = Arb.of(
+        DatabaseFactory.getInstance().implementedDatabases
+            .filterIsInstance<PostgresDatabase>()
+    )
     val unsupportedDatabases = Arb.of(DatabaseFactory.getInstance().implementedDatabases
         .filterNot { it is PostgresDatabase })
 }

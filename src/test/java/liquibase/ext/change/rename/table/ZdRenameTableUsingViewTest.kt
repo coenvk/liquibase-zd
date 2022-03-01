@@ -4,8 +4,8 @@ import liquibase.ext.change.ZdChangeIntegrationTest
 
 class ZdRenameTableUsingViewTest
     : ZdChangeIntegrationTest(
-    "change/rename/view/original.xml",
-    "change/rename/view/expand.xml",
-    "change/rename/view/contract.xml",
+    "change/rename/table/view/original.xml",
+    "change/rename/table/view/expand.xml",
+    "change/rename/table/view/contract.xml",
     changeClass = ZdRenameTableUsingViewChange::class
 )

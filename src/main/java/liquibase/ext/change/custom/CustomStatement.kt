@@ -7,7 +7,7 @@ import liquibase.database.Database
 import liquibase.exception.CustomChangeException
 import liquibase.statement.AbstractSqlStatement
 
-abstract class CustomStatement(
+sealed class CustomStatement(
     internal val customChangeWrapper: CustomChangeWrapper
 ) : AbstractSqlStatement() {
     abstract fun execute(database: Database)

@@ -4,23 +4,28 @@ import io.kotest.core.spec.style.ShouldSpec
 import io.kotest.property.checkAll
 import liquibase.change.Change
 import liquibase.database.Database
+import liquibase.exception.DatabaseException
 import liquibase.exception.RollbackImpossibleException
+import liquibase.ext.change.custom.CustomStatement
 import liquibase.ext.util.TestConstants
 import liquibase.ext.util.TestConstants.runInScope
+import liquibase.ext.util.TestKotlinExtensions.assertThrowsIf
 import liquibase.sqlgenerator.SqlGeneratorFactory
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 class ZdChangeTest : ShouldSpec({
     val generator = SqlGeneratorFactory.getInstance()
 
     fun Change.toSql(db: Database): List<String> = try {
-        generator.generateSql(this, db).map { it.toSql() }
+        val stmts = generateStatements(db).filterNot { it is CustomStatement }
+        generator.generateSql(stmts.toTypedArray(), db).map { it.toSql() }
     } catch (e: IllegalStateException) {
         emptyList()
     }
 
     fun Change.toRollbackSql(db: Database): List<String> = try {
-        generator.generateSql(this.generateRollbackStatements(db), db).map { it.toSql() }
+        val stmts = generateRollbackStatements(db).filterNot { it is CustomStatement }
+        generator.generateSql(stmts.toTypedArray(), db).map { it.toSql() }
     } catch (e: IllegalStateException) {
         emptyList()
     }
@@ -31,10 +36,15 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.supportedDatabases,
                 TestConstants.zdExpandChangeArb
             ) { db, (zdChange, originalChange) ->
-                val expand = zdChange.toSql(db)
-                val original = originalChange.toSql(db)
+                if (originalChange.validate(db).hasErrors()) return@checkAll
+                db.runInScope {
+                    assertThrowsIf<DatabaseException>(zdChange.generateStatementsVolatile(db)) {
+                        val expand = zdChange.toSql(db)
+                        val original = originalChange.toSql(db)
 
-                assert(expand.none { it in original })
+                        assert(expand.none { it in original })
+                    }
+                }
             }
         }
         should("rewrite contract statements when supported database is used") {
@@ -42,21 +52,31 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.supportedDatabases,
                 TestConstants.zdContractChangeArb
             ) { db, (zdChange, originalChange) ->
-                val contract = zdChange.toSql(db)
-                val original = originalChange.toSql(db)
+                if (originalChange.validate(db).hasErrors()) return@checkAll
+                db.runInScope {
+                    assertThrowsIf<DatabaseException>(zdChange.generateStatementsVolatile(db)) {
+                        val contract = zdChange.toSql(db)
+                        val original = originalChange.toSql(db)
 
-                assert(contract.none { it in original })
+                        assert(contract.none { it in original })
+                    }
+                }
             }
         }
         should("not rewrite statements when zero-downtime is off") {
             checkAll(
                 TestConstants.supportedDatabases,
-                TestConstants.zdOffChangeArb
+                TestConstants.zdDisabledChangeArb
             ) { db, (zdChange, originalChange) ->
-                val off = zdChange.toSql(db)
-                val original = originalChange.toSql(db)
+                if (originalChange.validate(db).hasErrors()) return@checkAll
+                db.runInScope {
+                    assertThrowsIf<DatabaseException>(zdChange.generateStatementsVolatile(db)) {
+                        val disabled = zdChange.toSql(db)
+                        val original = originalChange.toSql(db)
 
-                assert(off.all { it in original })
+                        assert(disabled.all { it in original })
+                    }
+                }
             }
         }
         should("not rewrite expand statements when unsupported database is used") {
@@ -64,10 +84,15 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.unsupportedDatabases,
                 TestConstants.zdExpandChangeArb
             ) { db, (zdChange, originalChange) ->
-                val expand = zdChange.toSql(db)
-                val original = originalChange.toSql(db)
+                if (originalChange.validate(db).hasErrors()) return@checkAll
+                db.runInScope {
+                    assertThrowsIf<DatabaseException>(zdChange.generateStatementsVolatile(db)) {
+                        val expand = zdChange.toSql(db)
+                        val original = originalChange.toSql(db)
 
-                assert(expand.all { it in original })
+                        assert(expand.all { it in original })
+                    }
+                }
             }
         }
         should("not rewrite contract statements when unsupported database is used") {
@@ -75,10 +100,15 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.unsupportedDatabases,
                 TestConstants.zdContractChangeArb
             ) { db, (zdChange, originalChange) ->
-                val contract = zdChange.toSql(db)
-                val original = originalChange.toSql(db)
+                if (originalChange.validate(db).hasErrors()) return@checkAll
+                db.runInScope {
+                    assertThrowsIf<DatabaseException>(zdChange.generateStatementsVolatile(db)) {
+                        val contract = zdChange.toSql(db)
+                        val original = originalChange.toSql(db)
 
-                assert(contract.all { it in original })
+                        assert(contract.all { it in original })
+                    }
+                }
             }
         }
         should("rewrite expand rollback statements when supported database is used") {
@@ -86,12 +116,15 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.supportedDatabases,
                 TestConstants.zdExpandChangeArb
             ) { db, (zdChange, originalChange) ->
+                if (originalChange.validate(db).hasErrors()) return@checkAll
                 db.runInScope {
-                    if (!zdChange.generateRollbackStatementsVolatile(db) && zdChange.supportsRollback(db)) {
-                        val expandRollback = zdChange.toRollbackSql(db)
-                        val originalRollback = originalChange.toRollbackSql(db)
+                    if (originalChange.supportsRollback(db)) {
+                        assertThrowsIf<DatabaseException>(zdChange.generateRollbackStatementsVolatile(db)) {
+                            val expandRollback = zdChange.toRollbackSql(db)
+                            val originalRollback = originalChange.toRollbackSql(db)
 
-                        assert(expandRollback.none { it in originalRollback })
+                            assert(expandRollback.none { it in originalRollback })
+                        }
                     }
                 }
             }
@@ -100,22 +133,30 @@ class ZdChangeTest : ShouldSpec({
             checkAll(
                 TestConstants.supportedDatabases,
                 TestConstants.zdContractChangeArb
-            ) { db, (zdChange, _) ->
+            ) { db, (zdChange, originalChange) ->
+                if (originalChange.validate(db).hasErrors()) return@checkAll
                 db.runInScope {
-                    assertFailsWith<RollbackImpossibleException> { zdChange.toRollbackSql(db) }
+                    if (zdChange.generateRollbackStatementsVolatile(db)) {
+                        assertThrows<DatabaseException> { zdChange.toRollbackSql(db) }
+                    } else assertThrows<RollbackImpossibleException> { zdChange.toRollbackSql(db) }
                 }
             }
         }
         should("not rewrite rollback statements when zero-downtime is off") {
             checkAll(
                 TestConstants.supportedDatabases,
-                TestConstants.zdOffChangeArb
-            ) { db, (zdChange, _) ->
+                TestConstants.zdDisabledChangeArb
+            ) { db, (zdChange, originalChange) ->
+                if (originalChange.validate(db).hasErrors()) return@checkAll
                 db.runInScope {
-                    val offRollback = zdChange.toRollbackSql(db)
-                    val originalRollback = zdChange.toRollbackSql(db)
+                    if (originalChange.supportsRollback(db)) {
+                        assertThrowsIf<DatabaseException>(zdChange.generateRollbackStatementsVolatile(db)) {
+                            val disabledRollback = zdChange.toRollbackSql(db)
+                            val originalRollback = zdChange.toRollbackSql(db)
 
-                    assert(offRollback.all { it in originalRollback })
+                            assert(disabledRollback.all { it in originalRollback })
+                        }
+                    }
                 }
             }
         }
@@ -124,9 +165,10 @@ class ZdChangeTest : ShouldSpec({
                 TestConstants.unsupportedDatabases,
                 TestConstants.zdExpandChangeArb
             ) { db, (zdChange, originalChange) ->
-                if (originalChange.supports(db)) {
-                    db.runInScope {
-                        if (!zdChange.generateRollbackStatementsVolatile(db) && zdChange.supportsRollback(db)) {
+                if (originalChange.validate(db).hasErrors()) return@checkAll
+                db.runInScope {
+                    if (originalChange.supportsRollback(db)) {
+                        assertThrowsIf<DatabaseException>(zdChange.generateRollbackStatementsVolatile(db)) {
                             val expandRollback = zdChange.toRollbackSql(db)
                             val originalRollback = originalChange.toRollbackSql(db)
 

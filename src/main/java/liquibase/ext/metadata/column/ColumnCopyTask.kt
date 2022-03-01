@@ -72,9 +72,6 @@ class ColumnCopyTask : AbstractMetadataCopyTask<ColumnMetadata>() {
                 defaultValue = rs.getString(3)
 
                 when (rs.getString(4)) {
-                    "c" -> {
-                        // TODO: check constraints
-                    }
                     "f" -> {
                         constraints.add(
                             ForeignKeyConstraintMetadata(
@@ -110,12 +107,7 @@ class ColumnCopyTask : AbstractMetadataCopyTask<ColumnMetadata>() {
                             )
                         )
                     }
-                    "t" -> {
-                        // TODO: constraint trigger
-                    }
-                    "x" -> {
-                        // TODO: exclusion constraint
-                    }
+                    else -> {/* Other constraints are not implemented yet */}
                 }
             }
         }

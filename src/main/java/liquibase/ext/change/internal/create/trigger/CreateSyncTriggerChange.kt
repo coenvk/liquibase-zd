@@ -54,7 +54,7 @@ internal class CreateSyncTriggerChange(
     }
 }
 
-fun syncUpdateTriggerChange(
+internal fun syncUpdateTriggerChange(
     catalogName: String?,
     schemaName: String?,
     tableName: String,
@@ -84,7 +84,7 @@ fun syncUpdateTriggerChange(
     )
 }
 
-fun syncInsertTriggerChange(
+internal fun syncInsertTriggerChange(
     catalogName: String?,
     schemaName: String?,
     tableName: String,
