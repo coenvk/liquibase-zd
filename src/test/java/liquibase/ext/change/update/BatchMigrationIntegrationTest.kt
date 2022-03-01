@@ -1,7 +1,10 @@
 package liquibase.ext.change.update
 
 import io.kotest.core.spec.style.ShouldSpec
+import io.kotest.property.Exhaustive
 import io.kotest.property.checkAll
+import io.kotest.property.exhaustive.of
+import io.mockk.InternalPlatformDsl.toArray
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk

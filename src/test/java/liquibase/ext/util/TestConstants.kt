@@ -1,7 +1,10 @@
 package liquibase.ext.util
 
 import io.kotest.property.Arb
+import io.kotest.property.Exhaustive
 import io.kotest.property.arbitrary.*
+import io.kotest.property.exhaustive.exhaustive
+import io.kotest.property.exhaustive.of
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -154,10 +157,9 @@ object TestConstants {
     val zdExpandChangeArb = zdChangeArb.map { it.addContext(ZdStrategy.EXPAND) }
     val zdContractChangeArb = zdChangeArb.map { it.addContext(ZdStrategy.CONTRACT) }
 
-    val supportedDatabases = Arb.of(
-        DatabaseFactory.getInstance().implementedDatabases
-            .filterIsInstance<PostgresDatabase>()
-    )
-    val unsupportedDatabases = Arb.of(DatabaseFactory.getInstance().implementedDatabases
-        .filterNot { it is PostgresDatabase })
+    val supportedDatabases = DatabaseFactory.getInstance().implementedDatabases
+            .filterIsInstance<PostgresDatabase>().exhaustive()
+
+    val unsupportedDatabases = DatabaseFactory.getInstance().implementedDatabases
+        .filterNot { it is PostgresDatabase }.exhaustive()
 }
