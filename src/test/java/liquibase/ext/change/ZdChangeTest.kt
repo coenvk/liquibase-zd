@@ -18,10 +18,14 @@ class ZdChangeTest : ShouldSpec({
     val generator = SqlGeneratorFactory.getInstance()
 
     fun ZdChange.containsOriginal(db: Database, originalChange: Change): Boolean =
-        generateStatements(db).none { it == originalChange.generateStatements(db) }
+        generateStatements(db).any {
+            originalChange.generateStatements(db).filterIsInstance(it::class.java).any()
+        }
 
     fun ZdChange.containsOriginalRollback(db: Database, originalChange: Change): Boolean =
-        generateRollbackStatements(db).none { it == originalChange.generateRollbackStatements(db) }
+        generateRollbackStatements(db).any {
+            originalChange.generateRollbackStatements(db).filterIsInstance(it::class.java).any()
+        }
 
     fun Change.toSql(db: Database): List<String> = try {
         val stmts = generateStatements(db).filterNot { it is CustomStatement }
