@@ -6,6 +6,7 @@ import liquibase.change.Change
 import liquibase.database.Database
 import liquibase.exception.DatabaseException
 import liquibase.exception.RollbackImpossibleException
+import liquibase.ext.base.ZdChange
 import liquibase.ext.change.custom.CustomStatement
 import liquibase.ext.util.TestConstants
 import liquibase.ext.util.TestConstants.runInScope
@@ -15,6 +16,12 @@ import org.junit.jupiter.api.assertThrows
 
 class ZdChangeTest : ShouldSpec({
     val generator = SqlGeneratorFactory.getInstance()
+
+    fun ZdChange.containsOriginal(db: Database, originalChange: Change): Boolean =
+        generateStatements(db).none { it == originalChange.generateStatements(db) }
+
+    fun ZdChange.containsOriginalRollback(db: Database, originalChange: Change): Boolean =
+        generateRollbackStatements(db).none { it == originalChange.generateRollbackStatements(db) }
 
     fun Change.toSql(db: Database): List<String> = try {
         val stmts = generateStatements(db).filterNot { it is CustomStatement }
@@ -42,7 +49,9 @@ class ZdChangeTest : ShouldSpec({
                         val expand = zdChange.toSql(db)
                         val original = originalChange.toSql(db)
 
-                        assert(expand.none { it in original })
+                        if (zdChange.containsOriginal(db, originalChange)) {
+                            assert(expand.any { it in original })
+                        } else assert(expand.none { it in original })
                     }
                 }
             }
@@ -58,7 +67,9 @@ class ZdChangeTest : ShouldSpec({
                         val contract = zdChange.toSql(db)
                         val original = originalChange.toSql(db)
 
-                        assert(contract.none { it in original })
+                        if (zdChange.containsOriginal(db, originalChange)) {
+                            assert(contract.any { it in original })
+                        } else assert(contract.none { it in original })
                     }
                 }
             }
@@ -74,7 +85,9 @@ class ZdChangeTest : ShouldSpec({
                         val disabled = zdChange.toSql(db)
                         val original = originalChange.toSql(db)
 
-                        assert(disabled.all { it in original })
+                        if (zdChange.containsOriginal(db, originalChange)) {
+                            assert(disabled.any { it in original })
+                        } else assert(disabled.none { it in original })
                     }
                 }
             }
@@ -123,7 +136,9 @@ class ZdChangeTest : ShouldSpec({
                             val expandRollback = zdChange.toRollbackSql(db)
                             val originalRollback = originalChange.toRollbackSql(db)
 
-                            assert(expandRollback.none { it in originalRollback })
+                            if (zdChange.containsOriginalRollback(db, originalChange)) {
+                                assert(expandRollback.any { it in originalRollback })
+                            } else assert(expandRollback.none { it in originalRollback })
                         }
                     }
                 }

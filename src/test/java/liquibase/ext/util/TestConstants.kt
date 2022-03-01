@@ -135,7 +135,7 @@ object TestConstants {
         }
     }
 
-    private fun Pair<Change, Change>.addContext(zdStrategy: ZdStrategy = ZdStrategy.DISABLED) =
+    private fun Pair<ZdChange, Change>.addContext(zdStrategy: ZdStrategy = ZdStrategy.DISABLED) =
         first.apply { changeSet = createChangeSet(zdStrategy) } to
                 second.apply { changeSet = createChangeSet(zdStrategy) }
 
@@ -145,7 +145,7 @@ object TestConstants {
         Scope.child(scopeObjects, scopedRunner)
     }
 
-    private val zdChangeArb = Arb.choice(
+    private val zdChangeArb: Arb<Pair<ZdChange, Change>> = Arb.choice(
         renameColumnPairArb,
         renameTableUsingCopyPairArb,
         renameTableUsingViewPairArb,
