@@ -131,7 +131,7 @@ class BatchMigrationChangeTest : ShouldSpec({
         should("update in the expected chunks") {
             checkAll(
                 TestConstants.supportedDatabases,
-                listOf(0L, 1L, 2L, 50000L).exhaustive(),
+                listOf(0L, 1L, 2L, 5000L).exhaustive(),
                 gen.validMigrationGenerator
             ) { db, allRowCount, migration ->
                 val conn = mockk<JdbcConnection>()
