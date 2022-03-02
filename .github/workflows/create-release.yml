@@ -95,7 +95,7 @@ jobs:
           git add pom.xml
           git commit -m "Version Bumped to ${{ needs.setup.outputs.extensionVersion }}"
           git tag -a -m "Version Bumped to ${{ needs.setup.outputs.extensionVersion }}" liquibase-zd-${{ needs.setup.outputs.extensionVersion }}
-          git push "https://coenvk:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:${{ github.ref }} --follow-tags --tags
+          git push "https://coenvk:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:${{ github.ref }} -f --follow-tags --tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -228,6 +228,6 @@ jobs:
           mvn -B versions:set -DnextSnapshot=true
           git add pom.xml
           git commit -m "Version Bumped to Snapshot for Development"
-          git push "https://coenvk:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:${{ github.ref }} --follow-tags --tags
+          git push "https://coenvk:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:${{ github.ref }} -f --follow-tags --tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
