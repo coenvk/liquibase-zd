@@ -5,7 +5,6 @@ import liquibase.change.DatabaseChangeProperty
 import liquibase.change.custom.CustomTaskChange
 import liquibase.change.custom.CustomTaskRollback
 import liquibase.database.Database
-import liquibase.database.core.OracleDatabase
 import liquibase.database.core.PostgresDatabase
 import liquibase.database.jvm.JdbcConnection
 import liquibase.exception.CustomChangeException
@@ -136,11 +135,11 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         try {
             when (db) {
                 is PostgresDatabase -> {
-                    LOG.info("Executing BatchMigrationChange on supported Database")
+                    LOG.info("Executing ${BulkColumnCopyChange::class.java.simpleName} on supported Database")
                     startMigration(db)
                 }
                 else -> {
-                    LOG.info("Skipping BatchMigrationChange due to non-supported Database")
+                    LOG.info("Skipping ${BulkColumnCopyChange::class.java.simpleName} due to non-supported Database")
                 }
             }
         } catch (e: CustomChangeException) {
@@ -158,9 +157,8 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         val conn = db.connection as JdbcConnection
         // Fetch only the rows where not all values are synced yet
         var query =
-            "UPDATE $fullName SET $updateColumnsString WHERE %1\$s IN (SELECT %1\$s FROM $fullName WHERE $whereClauseString %2\$s);"
+            "UPDATE $fullName SET $updateColumnsString WHERE (%1\$s) IN (SELECT %1\$s FROM $fullName WHERE $whereClauseString %2\$s);"
         query = when (db) {
-            is OracleDatabase -> query.format("rowId", "FETCH FIRST $chunkSize ROWS ONLY")
             is PostgresDatabase -> {
                 if (rowId == null) {
                     val rs = conn.metaData.getBestRowIdentifier(
@@ -178,11 +176,6 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         }
 
         try {
-            if (db is OracleDatabase && !hasImmutableRowIds(conn)) {
-                LOG.severe("rowIds are not immutable, migration strategy can not be applied")
-                throw CustomChangeException("Database has no immutable rowIds")
-            }
-
             var running = true
             while (running) {
                 val n = executeMigrationChunk(query, conn)
@@ -203,7 +196,7 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         var stmt: PreparedStatement? = null
         try {
             stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)
-            LOG.info("Executing $stmt with query $query")
+            LOG.info("Executing $query")
             val affectedRows = stmt.executeLargeUpdate()
             // serves as no-op when auto-commit = true
             conn.commit()
@@ -213,16 +206,6 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
             throw CustomChangeException("Could not update $tableName in batch", e)
         } finally {
             stmt?.close()
-        }
-    }
-
-    private fun hasImmutableRowIds(conn: JdbcConnection): Boolean {
-        try {
-            val dbMetaData: DatabaseMetaData = conn.metaData
-            val lifetime = dbMetaData.rowIdLifetime
-            return (lifetime == RowIdLifetime.ROWID_VALID_FOREVER)
-        } catch (e: SQLException) {
-            throw CustomChangeException("Failed to query for rowId lifetime", e)
         }
     }
 

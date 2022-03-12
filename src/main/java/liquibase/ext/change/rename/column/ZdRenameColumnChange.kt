@@ -29,6 +29,9 @@ import liquibase.structure.core.Column
     appliesTo = ["column"]
 )
 class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
+    var batchChunkSize: Long? = BulkColumnCopyChange.DEFAULT_CHUNK_SIZE
+    var batchSleepTime: Long? = BulkColumnCopyChange.DEFAULT_SLEEP_TIME
+
     override fun generateStatements(database: Database): Array<SqlStatement> =
         generateZdStatements(database) { super.generateStatements(it) }
 
@@ -91,6 +94,8 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 it.setParam("fromColumns", oldColumnName)
                 it.setParam("toColumns", newColumnName)
                 it.setParam("rowId", columnMetadata.primaryKeyOrNull())
+                it.setParam("chunkSize", batchChunkSize?.toString())
+                it.setParam("sleepTime", batchSleepTime?.toString())
             },
             *constraintChanges.filterIsInstance<AddForeignKeyNotValidChange>().toTypedArray(),
             if (columnMetadata.isNullable) EmptyChange()

@@ -41,27 +41,6 @@
         </xsd:complexType>
     </xsd:element>
 
-    <xsd:simpleType name="nonEmptyString">
-        <xsd:restriction base="xsd:string">
-            <xsd:pattern value="\S.*"/>
-        </xsd:restriction>
-    </xsd:simpleType>
-
-    <xsd:attributeGroup name="loadDataAttributes">
-        <xsd:attribute name="file" type="nonEmptyString" use="required"/>
-        <xsd:attribute name="encoding" type="xsd:NMTOKEN"/>
-        <xsd:attribute name="separator" type="nonEmptyString" default=","/>
-        <xsd:attribute name="quote" type="nonEmptyString" default="&quot;"/>
-        <xsd:attribute name="columnNames" type="xsd:string"/>
-    </xsd:attributeGroup>
-
-    <xsd:element name="loadLargeData">
-        <xsd:complexType mixed="true">
-            <xsd:attributeGroup ref="tableNameAttribute"/>
-            <xsd:attributeGroup ref="loadDataAttributes"/>
-        </xsd:complexType>
-    </xsd:element>
-
     <xsd:element name="copyTable">
         <xsd:complexType>
             <xsd:attributeGroup ref="tableNameAttribute"/>

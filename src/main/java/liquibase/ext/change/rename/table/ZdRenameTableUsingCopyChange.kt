@@ -11,6 +11,7 @@ import liquibase.ext.base.ZdChange
 import liquibase.ext.change.copy.table.CopyTableChange
 import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
+import liquibase.ext.change.update.BulkColumnCopyChange
 import liquibase.ext.change.update.BulkTableCopyChange
 import liquibase.ext.metadata.table.TableCopyTask
 import liquibase.ext.metadata.table.TableMetadata
@@ -23,6 +24,9 @@ import liquibase.statement.SqlStatement
     appliesTo = ["table"]
 )
 class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
+    var batchChunkSize: Long? = BulkColumnCopyChange.DEFAULT_CHUNK_SIZE
+    var batchSleepTime: Long? = BulkColumnCopyChange.DEFAULT_SLEEP_TIME
+
     override fun generateStatements(database: Database): Array<SqlStatement> =
         generateZdStatements(database) { super.generateStatements(it) }
 
@@ -96,6 +100,8 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
                 it.setParam("fromTableName", oldTableName)
                 it.setParam("toTableName", newTableName)
                 it.setParam("rowId", rowId)
+                it.setParam("chunkSize", batchChunkSize?.toString())
+                it.setParam("sleepTime", batchSleepTime?.toString())
             },
             CreateProcedureChange().also {
                 it.catalogName = catalogName

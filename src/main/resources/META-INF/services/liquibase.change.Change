@@ -5,6 +5,5 @@ liquibase.ext.change.rename.view.ZdRenameViewChange
 liquibase.ext.change.modify.datatype.ZdModifyDatatypeChange
 liquibase.ext.change.constraint.AddForeignKeyNotValidChange
 liquibase.ext.change.constraint.AddCheckConstraintNotValidChange
-liquibase.ext.change.load.LoadLargeDataChange
 liquibase.ext.change.copy.table.CopyTableChange
 liquibase.ext.change.custom.CustomChangeDecorator

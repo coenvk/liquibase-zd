@@ -1,6 +1,5 @@
 liquibase.ext.change.constraint.AddForeignKeyNotValidGenerator
 liquibase.ext.change.constraint.AddCheckConstraintNotValidGenerator
-liquibase.ext.change.load.LoadLargeDataGenerator
 liquibase.ext.change.copy.table.CopyTableGenerator
 liquibase.ext.change.custom.CustomTaskGenerator
 liquibase.ext.change.custom.CustomTaskRollbackGenerator

@@ -28,6 +28,8 @@ import liquibase.structure.core.Column
 )
 class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
     var newColumnName: String? = null
+    var batchChunkSize: Long? = BulkColumnCopyChange.DEFAULT_CHUNK_SIZE
+    var batchSleepTime: Long? = BulkColumnCopyChange.DEFAULT_SLEEP_TIME
 
     override fun validate(database: Database?): ValidationErrors {
         val validationErrors = super.validate(database)
@@ -94,6 +96,8 @@ class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
                 it.setParam("fromColumns", columnName)
                 it.setParam("toColumns", newColumnName)
                 it.setParam("rowId", columnMetadata.primaryKeyOrNull())
+                it.setParam("chunkSize", batchChunkSize?.toString())
+                it.setParam("sleepTime", batchSleepTime?.toString())
             },
             *constraintChanges.filterIsInstance<AddForeignKeyNotValidChange>().toTypedArray(),
             if (columnMetadata.isNullable) EmptyChange()

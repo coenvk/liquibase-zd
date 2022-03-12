@@ -12,7 +12,10 @@ import liquibase.exception.ValidationErrors
 import liquibase.ext.util.KotlinExtensions.getAll
 import liquibase.logging.Logger
 import liquibase.resource.ResourceAccessor
-import java.sql.*
+import java.sql.DatabaseMetaData
+import java.sql.PreparedStatement
+import java.sql.SQLException
+import java.sql.Statement
 
 class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
     var fromCatalogName: String? = null
@@ -84,11 +87,11 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
         try {
             when (db) {
                 is PostgresDatabase -> {
-                    LOG.info("Executing BatchInsertChange on supported Database")
+                    LOG.info("Executing ${BulkTableCopyChange::class.java.simpleName} on supported Database")
                     startMigration(db)
                 }
                 else -> {
-                    LOG.info("Skipping BatchInsertChange due to non-supported Database")
+                    LOG.info("Skipping ${BulkTableCopyChange::class.java.simpleName} due to non-supported Database")
                 }
             }
         } catch (e: CustomChangeException) {
@@ -117,8 +120,9 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
         }
         val query = """
             INSERT INTO $toFullName
-            SELECT * FROM $fromFullName
-            WHERE $rowId NOT IN (SELECT $rowId FROM $toFullName)
+            SELECT a.* FROM $fromFullName a
+            LEFT OUTER JOIN $toFullName b USING ($rowId)
+            WHERE b.${rowId!!.split(',')[0].trim()} IS NULL
             LIMIT $chunkSize;
         """.trimIndent()
 
@@ -143,7 +147,7 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
         var stmt: PreparedStatement? = null
         try {
             stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)
-            LOG.info("Executing $stmt with query $query")
+            LOG.info("Executing $query")
             val affectedRows = stmt.executeLargeUpdate()
             // serves as no-op when auto-commit = true
             conn.commit()
