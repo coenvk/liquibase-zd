@@ -14,7 +14,7 @@ import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
-import liquibase.ext.change.update.BulkColumnCopyChange
+import liquibase.ext.change.update.BatchColumnMigrationChange
 import liquibase.ext.metadata.column.ColumnCopyTask
 import liquibase.ext.metadata.column.ColumnMetadata
 import liquibase.statement.SqlStatement
@@ -28,8 +28,8 @@ import liquibase.structure.core.Column
 )
 class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
     var newColumnName: String? = null
-    var batchChunkSize: Long? = BulkColumnCopyChange.DEFAULT_CHUNK_SIZE
-    var batchSleepTime: Long? = BulkColumnCopyChange.DEFAULT_SLEEP_TIME
+    var batchChunkSize: Long? = BatchColumnMigrationChange.DEFAULT_CHUNK_SIZE
+    var batchSleepTime: Long? = BatchColumnMigrationChange.DEFAULT_SLEEP_TIME
 
     override fun validate(database: Database?): ValidationErrors {
         val validationErrors = super.validate(database)
@@ -89,7 +89,7 @@ class ZdModifyDatatypeChange : ModifyDataTypeChange(), ZdChange {
                 columnName,
                 newColumnName!!,
             ),
-            CustomChangeDecorator().setClass(BulkColumnCopyChange::class.java.name).also {
+            CustomChangeDecorator().setClass(BatchColumnMigrationChange::class.java.name).also {
                 it.setParam("catalogName", catalogName)
                 it.setParam("schemaName", schemaName)
                 it.setParam("tableName", tableName)

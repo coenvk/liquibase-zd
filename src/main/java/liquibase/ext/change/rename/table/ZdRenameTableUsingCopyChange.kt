@@ -11,8 +11,7 @@ import liquibase.ext.base.ZdChange
 import liquibase.ext.change.copy.table.CopyTableChange
 import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
-import liquibase.ext.change.update.BulkColumnCopyChange
-import liquibase.ext.change.update.BulkTableCopyChange
+import liquibase.ext.change.update.BatchTableMigrationChange
 import liquibase.ext.metadata.table.TableCopyTask
 import liquibase.ext.metadata.table.TableMetadata
 import liquibase.statement.SqlStatement
@@ -24,8 +23,8 @@ import liquibase.statement.SqlStatement
     appliesTo = ["table"]
 )
 class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
-    var batchChunkSize: Long? = BulkColumnCopyChange.DEFAULT_CHUNK_SIZE
-    var batchSleepTime: Long? = BulkColumnCopyChange.DEFAULT_SLEEP_TIME
+    var batchChunkSize: Long? = BatchTableMigrationChange.DEFAULT_CHUNK_SIZE
+    var batchSleepTime: Long? = BatchTableMigrationChange.DEFAULT_SLEEP_TIME
 
     override fun generateStatements(database: Database): Array<SqlStatement> =
         generateZdStatements(database) { super.generateStatements(it) }
@@ -76,6 +75,7 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
                             DELETE FROM $newTableName
                             WHERE $whereRowIdString;
                         END IF;
+                        RETURN NEW;
                     END;
                     ${"$"}$;
             """.trimIndent()
@@ -89,10 +89,11 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
                 CREATE OR REPLACE TRIGGER t1
                 BEFORE UPDATE OR INSERT OR DELETE ON $oldTableName
                 FOR EACH ROW
+                WHEN (pg_trigger_depth() < 1)
                 EXECUTE PROCEDURE ${it.procedureName}();
             """.trimIndent()
             },
-            CustomChangeDecorator().setClass(BulkTableCopyChange::class.java.name).also {
+            CustomChangeDecorator().setClass(BatchTableMigrationChange::class.java.name).also {
                 it.setParam("fromCatalogName", catalogName)
                 it.setParam("toCatalogName", catalogName)
                 it.setParam("fromSchemaName", schemaName)
@@ -124,6 +125,7 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
                             DELETE FROM $oldTableName
                             WHERE $whereRowIdString;
                         END IF;
+                        RETURN NEW;
                     END;
                     ${"$"}$;
             """.trimIndent()
@@ -137,6 +139,7 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
                 CREATE OR REPLACE TRIGGER t2
                 BEFORE UPDATE OR INSERT OR DELETE ON $newTableName
                 FOR EACH ROW
+                WHEN (pg_trigger_depth() < 1)
                 EXECUTE PROCEDURE ${it.procedureName}();
             """.trimIndent()
             }
@@ -145,6 +148,10 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
 
     override fun generateContractChanges(database: Database): Array<Change> = arrayOf(
         DropSyncTriggerChange(
+            "t1",
+            oldTableName
+        ),
+        DropSyncTriggerChange(
             "t2",
             newTableName
         ),
@@ -152,11 +159,15 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
             it.catalogName = catalogName
             it.schemaName = schemaName
             it.tableName = oldTableName
-            it.isCascadeConstraints = true
+            it.isCascadeConstraints = false
         }
     )
 
     override fun createExpandInverses(): Array<Change> = arrayOf(
+        DropSyncTriggerChange(
+            "t2",
+            newTableName
+        ),
         DropSyncTriggerChange(
             "t1",
             oldTableName
@@ -165,7 +176,7 @@ class ZdRenameTableUsingCopyChange : RenameTableChange(), ZdChange {
             it.catalogName = catalogName
             it.schemaName = schemaName
             it.tableName = newTableName
-            it.isCascadeConstraints = true
+            it.isCascadeConstraints = false
         }
     )
 }

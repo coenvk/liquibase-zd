@@ -17,7 +17,7 @@ import java.sql.PreparedStatement
 import java.sql.SQLException
 import java.sql.Statement
 
-class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
+class BatchTableMigrationChange : CustomTaskChange, CustomTaskRollback {
     var fromCatalogName: String? = null
     var fromSchemaName: String? = null
     var fromTableName: String? = null
@@ -87,11 +87,11 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
         try {
             when (db) {
                 is PostgresDatabase -> {
-                    LOG.info("Executing ${BulkTableCopyChange::class.java.simpleName} on supported Database")
+                    LOG.info("Executing ${BatchTableMigrationChange::class.java.simpleName} on supported Database")
                     startMigration(db)
                 }
                 else -> {
-                    LOG.info("Skipping ${BulkTableCopyChange::class.java.simpleName} due to non-supported Database")
+                    LOG.info("Skipping ${BatchTableMigrationChange::class.java.simpleName} due to non-supported Database")
                 }
             }
         } catch (e: CustomChangeException) {
@@ -123,21 +123,25 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
             SELECT a.* FROM $fromFullName a
             LEFT OUTER JOIN $toFullName b USING ($rowId)
             WHERE b.${rowId!!.split(',')[0].trim()} IS NULL
-            LIMIT $chunkSize;
+            LIMIT $chunkSize
+            ON CONFLICT ($rowId) DO NOTHING;
         """.trimIndent()
 
         try {
-            var running = true
-            while (running) {
+            var chunkCount = 0
+            while (true) {
                 val n = executeMigrationChunk(query, conn)
                 if (n == 0L) {
-                    running = false
-                } else {
-                    if (sleepTime!! > 0L) {
-                        Thread.sleep(sleepTime!!)
-                    }
+                    break
+                }
+
+                chunkCount++
+                if (sleepTime!! > 0L) {
+                    Thread.sleep(sleepTime!!)
                 }
             }
+
+            LOG.info("Finished ${BatchTableMigrationChange::class.java.simpleName} after $chunkCount chunks")
         } catch (e: CustomChangeException) {
             throw e
         }
@@ -167,6 +171,6 @@ class BulkTableCopyChange : CustomTaskChange, CustomTaskRollback {
     companion object {
         const val DEFAULT_CHUNK_SIZE = 1000L
         const val DEFAULT_SLEEP_TIME = 0L
-        private val LOG: Logger = Scope.getCurrentScope().getLog(BulkTableCopyChange::class.java)
+        private val LOG: Logger = Scope.getCurrentScope().getLog(BatchTableMigrationChange::class.java)
     }
 }

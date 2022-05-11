@@ -16,14 +16,15 @@ class TableCopyTask : AbstractMetadataCopyTask<TableMetadata>() {
         val query = """
         SELECT
             a.attname,
-            i.indisprimary
+            bool_or(i.indisprimary)
         FROM
             pg_catalog.pg_attribute a
             LEFT JOIN pg_catalog.pg_index i ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
         WHERE
             a.attnum > 0
             AND NOT a.attisdropped
-            AND a.attrelid = '${tableName}'::regclass;
+            AND a.attrelid = '${tableName}'::regclass
+        GROUP BY a.attname;
         """.trimIndent()
         return connection.prepareStatement(query, Statement.NO_GENERATED_KEYS)
     }

@@ -13,9 +13,12 @@ import liquibase.ext.util.KotlinExtensions.getAll
 import liquibase.logging.Logger
 import liquibase.resource.ResourceAccessor
 import liquibase.structure.core.Column
-import java.sql.*
+import java.sql.DatabaseMetaData
+import java.sql.PreparedStatement
+import java.sql.SQLException
+import java.sql.Statement
 
-class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
+class BatchColumnMigrationChange : CustomTaskChange, CustomTaskRollback {
     var catalogName: String? = null
     var schemaName: String? = null
     var tableName: String? = null
@@ -135,11 +138,11 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         try {
             when (db) {
                 is PostgresDatabase -> {
-                    LOG.info("Executing ${BulkColumnCopyChange::class.java.simpleName} on supported Database")
+                    LOG.info("Executing ${BatchColumnMigrationChange::class.java.simpleName} on supported Database")
                     startMigration(db)
                 }
                 else -> {
-                    LOG.info("Skipping ${BulkColumnCopyChange::class.java.simpleName} due to non-supported Database")
+                    LOG.info("Skipping ${BatchColumnMigrationChange::class.java.simpleName} due to non-supported Database")
                 }
             }
         } catch (e: CustomChangeException) {
@@ -176,17 +179,20 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
         }
 
         try {
-            var running = true
-            while (running) {
+            var chunkCount = 0
+            while (true) {
                 val n = executeMigrationChunk(query, conn)
                 if (n == 0L) {
-                    running = false
-                } else {
-                    if (sleepTime!! > 0L) {
-                        Thread.sleep(sleepTime!!)
-                    }
+                    break
+                }
+
+                chunkCount++
+                if (sleepTime!! > 0L) {
+                    Thread.sleep(sleepTime!!)
                 }
             }
+
+            LOG.info("Finished ${BatchColumnMigrationChange::class.java.simpleName} after $chunkCount chunks")
         } catch (e: CustomChangeException) {
             throw e
         }
@@ -217,6 +223,6 @@ class BulkColumnCopyChange : CustomTaskChange, CustomTaskRollback {
     companion object {
         const val DEFAULT_CHUNK_SIZE = 1000L
         const val DEFAULT_SLEEP_TIME = 0L
-        private val LOG: Logger = Scope.getCurrentScope().getLog(BulkColumnCopyChange::class.java)
+        private val LOG: Logger = Scope.getCurrentScope().getLog(BatchColumnMigrationChange::class.java)
     }
 }

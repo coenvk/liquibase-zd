@@ -1,10 +1,7 @@
 package liquibase.ext.change.update
 
 import io.kotest.core.spec.style.ShouldSpec
-import io.kotest.property.Exhaustive
 import io.kotest.property.checkAll
-import io.kotest.property.exhaustive.of
-import io.mockk.InternalPlatformDsl.toArray
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -38,9 +35,9 @@ class BatchMigrationIntegrationTest : ShouldSpec({
             assertEquals("phone", customChangeWrapper.getParamValue("fromColumns"))
             assertEquals("phoneNumber", customChangeWrapper.getParamValue("toColumns"))
             assertEquals("1000", customChangeWrapper.getParamValue("chunkSize"))
-            assertEquals(BulkColumnCopyChange::class.java, customChangeWrapper.customChange.javaClass)
+            assertEquals(BatchColumnMigrationChange::class.java, customChangeWrapper.customChange.javaClass)
 
-            val m = customChangeWrapper.customChange as BulkColumnCopyChange
+            val m = customChangeWrapper.customChange as BatchColumnMigrationChange
 
             val conn = mockk<JdbcConnection>(relaxed = true)
             val stmt = mockk<PreparedStatement>(relaxed = true)

@@ -14,7 +14,7 @@ import liquibase.ext.change.custom.CustomChangeDecorator
 import liquibase.ext.change.internal.create.trigger.syncInsertTriggerChange
 import liquibase.ext.change.internal.create.trigger.syncUpdateTriggerChange
 import liquibase.ext.change.internal.drop.trigger.DropSyncTriggerChange
-import liquibase.ext.change.update.BulkColumnCopyChange
+import liquibase.ext.change.update.BatchColumnMigrationChange
 import liquibase.ext.metadata.column.ColumnCopyTask
 import liquibase.ext.metadata.column.ColumnMetadata
 import liquibase.ext.metadata.column.PrimaryKeyConstraintMetadata
@@ -29,8 +29,8 @@ import liquibase.structure.core.Column
     appliesTo = ["column"]
 )
 class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
-    var batchChunkSize: Long? = BulkColumnCopyChange.DEFAULT_CHUNK_SIZE
-    var batchSleepTime: Long? = BulkColumnCopyChange.DEFAULT_SLEEP_TIME
+    var batchChunkSize: Long? = BatchColumnMigrationChange.DEFAULT_CHUNK_SIZE
+    var batchSleepTime: Long? = BatchColumnMigrationChange.DEFAULT_SLEEP_TIME
 
     override fun generateStatements(database: Database): Array<SqlStatement> =
         generateZdStatements(database) { super.generateStatements(it) }
@@ -87,7 +87,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 oldColumnName,
                 newColumnName,
             ),
-            CustomChangeDecorator().setClass(BulkColumnCopyChange::class.java.name).also {
+            CustomChangeDecorator().setClass(BatchColumnMigrationChange::class.java.name).also {
                 it.setParam("catalogName", catalogName)
                 it.setParam("schemaName", schemaName)
                 it.setParam("tableName", tableName)
@@ -185,12 +185,10 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 "t3",
                 tableName
             ),
-            DropNotNullConstraintChange().also {
-                it.catalogName = catalogName
-                it.schemaName = schemaName
-                it.tableName = tableName
-                it.columnName = newColumnName
-            },
+            *constraintChanges.filter {
+                it is DropNotNullConstraintChange
+                        || it is DropForeignKeyConstraintChange
+            }.toTypedArray(),
             DropSyncTriggerChange(
                 "t2",
                 tableName
@@ -199,7 +197,7 @@ class ZdRenameColumnChange : RenameColumnChange(), ZdChange {
                 "t1",
                 tableName
             ),
-            *constraintChanges,
+            *constraintChanges.filterIsInstance<DropUniqueConstraintChange>().toTypedArray(),
             DropColumnChange().also {
                 it.catalogName = catalogName
                 it.schemaName = schemaName

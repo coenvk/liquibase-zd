@@ -29,7 +29,7 @@ class CopyTableChange : AbstractTableChange() {
         DropTableChange().also {
             it.catalogName = catalogName
             it.schemaName = schemaName
-            it.tableName = tableName
+            it.tableName = copyTableName
         }
     )
 }

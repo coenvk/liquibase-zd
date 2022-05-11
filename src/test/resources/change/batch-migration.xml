@@ -4,12 +4,18 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.7.xsd">
 
-    <changeSet id="update.batchMigration" author="Coen">
+    <changeSet id="addColumn" author="Coen">
+        <addColumn tableName="customer">
+            <column name="c_id_new" type="integer"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="batchMigration" author="Coen">
         <customChange class="liquibase.ext.change.update.BatchColumnMigrationChange">
-            <param name="tableName" value="customer" />
-            <param name="fromColumns" value="phone" />
-            <param name="toColumns" value="phoneNumber" />
-            <param name="chunkSize" value="1000" />
+            <param name="tableName" value="customer"/>
+            <param name="fromColumns" value="c_id"/>
+            <param name="toColumns" value="c_id_new"/>
+            <param name="chunkSize" value="100"/>
         </customChange>
     </changeSet>
 </databaseChangeLog>

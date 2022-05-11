@@ -112,7 +112,7 @@ class BatchMigrationChangeTest : ShouldSpec({
                 every { spyDb.connection } returns null
 
                 assertThrows(CustomChangeException::class.java) {
-                    BulkColumnCopyChange().execute(spyDb)
+                    BatchColumnMigrationChange().execute(spyDb)
                 }
             }
         }
@@ -124,7 +124,7 @@ class BatchMigrationChangeTest : ShouldSpec({
                 every { spyDb.connection } returns null
 
                 assertThrows(CustomChangeException::class.java) {
-                    BulkColumnCopyChange().execute(spyDb)
+                    BatchColumnMigrationChange().execute(spyDb)
                 }
             }
         }

@@ -27,7 +27,7 @@ object BatchMigrationGenerator {
     ).exhaustive()
 
     val validMigrationGenerator = arbitrary { rs: RandomSource ->
-        val change = BulkColumnCopyChange()
+        val change = BatchColumnMigrationChange()
 
         val colCount = Arb.int(1, 5).next(rs)
         val colGen = fixedColumnListNoDupsGenerator(colCount, colCount)
@@ -52,7 +52,7 @@ object BatchMigrationGenerator {
     }
 
     private val sampleMigrationGenerator = arbitrary { rs: RandomSource ->
-        val change = BulkColumnCopyChange()
+        val change = BatchColumnMigrationChange()
         change.tableName = identifierGen(1).orNull().next(rs)
         change.chunkSize = Arb.long(-100L, 10000L).orNull().next(rs)
         val upperBound = Arb.int(0, 5).next(rs)
@@ -63,7 +63,7 @@ object BatchMigrationGenerator {
         change
     }
 
-    val invalidMigrationGenerator = sampleMigrationGenerator.filter { c: BulkColumnCopyChange ->
+    val invalidMigrationGenerator = sampleMigrationGenerator.filter { c: BatchColumnMigrationChange ->
         val simplePredicate = c.fromColumns.isNullOrEmpty() ||
                 c.toColumns.isNullOrEmpty() || (c.chunkSize ?: -1L) <= 0L || c.sleepTime?.let { it < 0L } ?: false
         if (simplePredicate) return@filter true
