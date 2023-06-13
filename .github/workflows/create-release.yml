@@ -80,7 +80,7 @@ jobs:
         with:
           repo: "liquibase/liquibase"
           version: "tags/v${{ needs.setup.outputs.liquibaseVersion }}"
-          file: "liquibase-${{ needs.setup.outputs.liquibaseVersion }}.jar"
+          file: "liquibase-core-${{ needs.setup.outputs.liquibaseVersion }}.jar"
           target: "liquibase.jar"
           token: ${{ secrets.GITHUB_TOKEN }}
 
